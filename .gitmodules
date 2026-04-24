@@ -1,0 +1,12 @@
+[submodule "extern/cppzmq"]
+	path = extern/cppzmq
+	url = https://github.com/zeromq/cppzmq.git
+[submodule "extern/min-api"]
+	path = extern/min-api
+	url = https://github.com/Cycling74/min-api.git
+[submodule "extern/max-sdk"]
+	path = extern/max-sdk
+	url = https://github.com/Cycling74/max-sdk.git
+[submodule "extern/libzmq"]
+	path = extern/libzmq
+	url = https://github.com/zeromq/libzmq.git
