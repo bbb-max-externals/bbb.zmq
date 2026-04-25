@@ -143,14 +143,12 @@ void bbb_zmq_recv::start() {
 
 void bbb_zmq_recv::stop() {
 	running_ = false;
-	if (context_) {
-		context_.reset();
-	}
 	if (thread_ && thread_->joinable()) {
 		thread_->join();
 	}
 	thread_.reset();
 	socket_.reset();
+	context_.reset();
 }
 
 void bbb_zmq_recv::recv_loop() {

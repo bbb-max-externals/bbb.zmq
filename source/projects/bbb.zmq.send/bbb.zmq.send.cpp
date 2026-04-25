@@ -176,14 +176,12 @@ void bbb_zmq_send::start() {
 void bbb_zmq_send::stop() {
 	running_ = false;
 	outgoing_cv_.notify_all();
-	if (context_) {
-		context_.reset();
-	}
 	if (thread_ && thread_->joinable()) {
 		thread_->join();
 	}
 	thread_.reset();
 	socket_.reset();
+	context_.reset();
 }
 
 void bbb_zmq_send::send_loop() {
