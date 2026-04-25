@@ -89,6 +89,9 @@ private:
 			} else if (check(TokenType::String)) {
 				auto field = parse_string_field();
 				if (field) schema.fields.push_back(std::move(*field));
+			} else if (check(TokenType::Matrix)) {
+				auto field = parse_matrix_field();
+				if (field) schema.fields.push_back(std::move(*field));
 			} else {
 				advance();
 			}
@@ -237,6 +240,45 @@ private:
 		} else {
 			field.kind = FieldDecl::NullString;
 		}
+
+		if (!check(TokenType::Ident)) return std::nullopt;
+		field.name = advance().text;
+
+		consume(TokenType::Semicolon, "expected ';'");
+		return field;
+	}
+
+	std::optional<FieldDecl> parse_matrix_field() {
+		FieldDecl field;
+		field.kind = FieldDecl::Matrix_;
+		advance();
+
+		if (!is_primitive()) return std::nullopt;
+		field.primitive_type = advance().text;
+
+		if (match(TokenType::Colon)) {
+			if (check(TokenType::Integer)) {
+				field.matrix_planes = (int64_t)parse_uint();
+			} else if (check(TokenType::Ident)) {
+				field.matrix_planes_field = advance().text;
+			}
+		}
+
+		consume(TokenType::LBracket, "expected '[' for matrix dim1");
+		if (check(TokenType::Integer)) {
+			field.matrix_dim1 = (int64_t)parse_uint();
+		} else if (check(TokenType::Ident)) {
+			field.matrix_dim1_field = advance().text;
+		}
+		consume(TokenType::RBracket, "expected ']'");
+
+		consume(TokenType::LBracket, "expected '[' for matrix dim2");
+		if (check(TokenType::Integer)) {
+			field.matrix_dim2 = (int64_t)parse_uint();
+		} else if (check(TokenType::Ident)) {
+			field.matrix_dim2_field = advance().text;
+		}
+		consume(TokenType::RBracket, "expected ']'");
 
 		if (!check(TokenType::Ident)) return std::nullopt;
 		field.name = advance().text;

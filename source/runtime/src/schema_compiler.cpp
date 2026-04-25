@@ -161,6 +161,20 @@ CompileResult compile(const dsl::Program &program) {
 				cs.instructions.push_back(instr);
 				break;
 			}
+			case dsl::FieldDecl::Matrix_: {
+				Instr instr;
+				instr.kind = Instr::ReadMatrix;
+				instr.primitive = token_to_primitive(field.primitive_type);
+				instr.field_name = field.name;
+				instr.matrix_planes = field.matrix_planes;
+				instr.matrix_planes_field = field.matrix_planes_field;
+				instr.matrix_dim1 = field.matrix_dim1;
+				instr.matrix_dim1_field = field.matrix_dim1_field;
+				instr.matrix_dim2 = field.matrix_dim2;
+				instr.matrix_dim2_field = field.matrix_dim2_field;
+				cs.instructions.push_back(instr);
+				break;
+			}
 			}
 		}
 
