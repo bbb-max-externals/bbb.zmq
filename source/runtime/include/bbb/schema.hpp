@@ -24,6 +24,7 @@ struct Instr {
 		ReadRemainingBytes,
 		ReadNullString,
 		ReadFixedString,
+		ReadMatrix,
 		Skip_,
 		ValidateConst,
 		Emit_
@@ -37,6 +38,12 @@ struct Instr {
 	std::string emit_selector;
 	std::vector<dsl::EmitExpr> emit_exprs;
 	int64_t skip_bytes = 0;
+	int64_t matrix_planes = 1;
+	std::string matrix_planes_field;
+	int64_t matrix_dim1 = 0;
+	std::string matrix_dim1_field;
+	int64_t matrix_dim2 = 0;
+	std::string matrix_dim2_field;
 };
 
 struct CompiledSchema {

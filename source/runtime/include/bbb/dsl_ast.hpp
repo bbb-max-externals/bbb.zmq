@@ -29,7 +29,8 @@ struct FieldDecl {
 		RemainingBytes,
 		NullString,
 		FixedString,
-		Skip_
+		Skip_,
+		Matrix_
 	};
 	Kind kind;
 	std::string primitive_type;
@@ -39,6 +40,12 @@ struct FieldDecl {
 	uint64_t const_value = 0;
 	bool has_const = false;
 	int64_t skip_bytes = 0;
+	int64_t matrix_planes = 1;
+	std::string matrix_planes_field;
+	int64_t matrix_dim1 = 0;
+	std::string matrix_dim1_field;
+	int64_t matrix_dim2 = 0;
+	std::string matrix_dim2_field;
 };
 
 struct EmitExpr {

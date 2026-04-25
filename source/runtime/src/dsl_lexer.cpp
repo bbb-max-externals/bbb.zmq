@@ -92,6 +92,7 @@ static const KeywordEntry keywords[] = {
 	{"f64", TokenType::F64},
 	{"bytes", TokenType::Bytes},
 	{"string", TokenType::String},
+	{"matrix", TokenType::Matrix},
 };
 
 LexerResult lex(const std::string &source) {
@@ -171,6 +172,10 @@ LexerResult lex(const std::string &source) {
 		}
 		if (c == '*') {
 			result.tokens.push_back({TokenType::Asterisk, "*", line, column});
+			++pos; ++column; continue;
+		}
+		if (c == ':') {
+			result.tokens.push_back({TokenType::Colon, ":", line, column});
 			++pos; ++column; continue;
 		}
 
