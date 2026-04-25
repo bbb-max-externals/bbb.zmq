@@ -46,13 +46,17 @@ static bool is_valid_utf8(const uint8_t *data, size_t len) {
 }
 
 struct FieldValue {
-	enum Kind { Int, Float, Bytes_, String_ };
+	enum Kind { Int, Float, Bytes_, String_, Matrix_ };
 	Kind kind;
 	int64_t int_value = 0;
 	double float_value = 0.0;
 	std::vector<uint8_t> bytes_value;
 	std::string string_value;
 	std::vector<FieldValue> array_values;
+	int64_t matrix_planes = 0;
+	int64_t matrix_dim1 = 0;
+	int64_t matrix_dim2 = 0;
+	PrimitiveType matrix_celltype = PrimitiveType::U8;
 };
 
 struct ParseContext {
@@ -308,6 +312,60 @@ struct ParseContext {
 		fields[name] = std::move(fv);
 	}
 
+	int64_t resolve_dim(int64_t literal, const std::string &field_name) {
+		if (!field_name.empty()) {
+			auto it = fields.find(field_name);
+			if (it == fields.end() || it->second.kind != FieldValue::Int) {
+				ParseDiag diag;
+				diag.code = ParseDiag::VarLengthNegative;
+				diag.message = "matrix dimension field '" + field_name + "' not found or not integer";
+				errors.push_back(diag);
+				failed = true;
+				return 0;
+			}
+			return it->second.int_value;
+		}
+		return literal;
+	}
+
+	void read_matrix(PrimitiveType pt, const std::string &name,
+		int64_t planes_lit, const std::string &planes_field,
+		int64_t dim1_lit, const std::string &dim1_field,
+		int64_t dim2_lit, const std::string &dim2_field)
+	{
+		int64_t planes = resolve_dim(planes_lit, planes_field);
+		if (failed) return;
+		if (planes <= 0) planes = 1;
+
+		int64_t d1 = resolve_dim(dim1_lit, dim1_field);
+		if (failed) return;
+		int64_t d2 = resolve_dim(dim2_lit, dim2_field);
+		if (failed) return;
+
+		if (d1 <= 0 || d2 <= 0) {
+			ParseDiag diag;
+			diag.code = ParseDiag::OutOfBounds;
+			diag.message = "matrix dims must be > 0 for field '" + name + "'";
+			errors.push_back(diag);
+			failed = true;
+			return;
+		}
+
+		size_t cell_sz = primitive_size(pt);
+		size_t total = (size_t)(planes * d1 * d2) * cell_sz;
+		if (!check_bounds(total)) return;
+
+		FieldValue fv;
+		fv.kind = FieldValue::Matrix_;
+		fv.matrix_planes = planes;
+		fv.matrix_dim1 = d1;
+		fv.matrix_dim2 = d2;
+		fv.matrix_celltype = pt;
+		fv.bytes_value.assign(frame.data() + offset, frame.data() + offset + total);
+		offset += total;
+		fields[name] = std::move(fv);
+	}
+
 	void validate_const(const std::string &name, PrimitiveType pt, uint64_t expected) {
 		auto it = fields.find(name);
 		if (it == fields.end()) return;
@@ -342,6 +400,17 @@ struct ParseContext {
 			if (expr.modifier == "handle") {
 				out.atoms.push_back("zmqbytes_" + expr.field_name);
 				++atom_count;
+			} else if (expr.modifier == "matrix") {
+				if (fv.kind == FieldValue::Matrix_) {
+					MatrixData md;
+					md.celltype = fv.matrix_celltype;
+					md.planes = fv.matrix_planes;
+					md.dim1 = fv.matrix_dim1;
+					md.dim2 = fv.matrix_dim2;
+					md.data = fv.bytes_value;
+					out.atoms.push_back(std::move(md));
+					++atom_count;
+				}
 			} else if (expr.modifier == "list") {
 				if (fv.kind == FieldValue::Bytes_) {
 					for (auto b : fv.bytes_value) {
@@ -462,6 +531,12 @@ ParseResult parse_frame(const CompiledSchema &schema, const Frame &frame, uint64
 			break;
 		case Instr::ReadFixedString:
 			ctx.read_fixed_string(instr.field_name, instr.fixed_count);
+			break;
+		case Instr::ReadMatrix:
+			ctx.read_matrix(instr.primitive, instr.field_name,
+				instr.matrix_planes, instr.matrix_planes_field,
+				instr.matrix_dim1, instr.matrix_dim1_field,
+				instr.matrix_dim2, instr.matrix_dim2_field);
 			break;
 		case Instr::Skip_:
 			if (ctx.check_bounds((size_t)instr.skip_bytes)) {

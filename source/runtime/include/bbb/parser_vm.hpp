@@ -9,9 +9,17 @@
 
 namespace bbb {
 
+struct MatrixData {
+	PrimitiveType celltype = PrimitiveType::U8;
+	int64_t planes = 1;
+	int64_t dim1 = 0;
+	int64_t dim2 = 0;
+	std::vector<uint8_t> data;
+};
+
 struct ParseOutput {
 	std::string selector;
-	std::vector<std::variant<double, int64_t, std::string>> atoms;
+	std::vector<std::variant<double, int64_t, std::string, MatrixData>> atoms;
 };
 
 struct ParseDiag {
