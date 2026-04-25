@@ -38,6 +38,7 @@ struct FieldDecl {
 	std::string length_field;
 	uint64_t const_value = 0;
 	bool has_const = false;
+	int64_t skip_bytes = 0;
 };
 
 struct EmitExpr {

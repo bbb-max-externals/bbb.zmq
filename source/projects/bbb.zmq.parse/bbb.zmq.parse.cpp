@@ -16,7 +16,7 @@ public:
 	outlet<> output {this, "parsed messages"};
 	outlet<> error_out {this, "diagnostics"};
 
-	attribute<std::string> schema_attr {this, "schema", "",
+	attribute<symbol> schema_attr {this, "schema", "",
 		description {"Schema name to use for parsing"}
 	};
 
@@ -44,7 +44,7 @@ public:
 
 	bbb_zmq_parse(const atoms &args = {}) {
 		for (auto &arg : args) {
-			if (arg.type() == atom::types::symbol) {
+			if (arg.a_type == c74::max::A_SYM) {
 				auto s = (std::string)arg;
 				if (s != "frame" && s != "schema" && s != "maxbytes" && s != "maxatoms" && s != "maxstring" && s != "maxitems") {
 					schema_name_ = s;
@@ -53,9 +53,9 @@ public:
 		}
 	}
 
-	message<> anything {this, "anything", "Handle packet input", [this](const atoms &args) -> atoms {
+	message<> anything {this, "anything", MIN_FUNCTION {
 		if (args.size() < 2) return {};
-		if (args[0] != "packet") return {};
+		if (!(args[0] == "packet")) return {};
 
 		auto view_id = (bbb::ViewId)(int)args[1];
 		auto view = bbb::Runtime::instance().packet_store.get_view(view_id);
@@ -64,7 +64,7 @@ public:
 			return {};
 		}
 
-		auto name = schema_name_.empty() ? schema_attr.get() : schema_name_;
+		auto name = schema_name_.empty() ? std::string(schema_attr.get()) : schema_name_;
 		if (name.empty()) {
 			error_out.send("error", "schema_not_specified");
 			return {};

@@ -18,9 +18,9 @@ public:
 		description {"Verbosity level (0-2)"}
 	};
 
-	message<> anything {this, "anything", "Handle packet input", [this](const atoms &args) -> atoms {
+	message<> anything {this, "anything", MIN_FUNCTION {
 		if (args.size() < 2) return {};
-		if (args[0] != "packet") return {};
+		if (!(args[0] == "packet")) return {};
 
 		auto view_id = (bbb::ViewId)(int)args[1];
 		auto view = bbb::Runtime::instance().packet_store.get_view(view_id);

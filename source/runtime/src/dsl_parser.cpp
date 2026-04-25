@@ -125,7 +125,7 @@ private:
 		}
 		case TokenType::Encoding: {
 			d.kind = Directive::Encoding_;
-			if (check(TokenType::Ident) || check(TokenType::UTF8)) {
+			if (check(TokenType::Ident)) {
 				d.value = advance().text;
 			}
 			break;

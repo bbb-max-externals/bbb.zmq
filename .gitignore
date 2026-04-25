@@ -1,0 +1,6 @@
+build/
+externals/
+docs/
+.DS_Store
+*.o
+*.dylib

@@ -13,14 +13,12 @@ public:
 
 	inlet<> input {this, "packet view handle"};
 
-	std::vector<std::unique_ptr<outlet<>>> outlets;
-
 	bbb_zmq_routepass(const atoms &args = {});
 	~bbb_zmq_routepass() = default;
 
-	message<> anything {this, "anything", "Handle packet input", [this](const atoms &args) -> atoms {
+	message<> anything {this, "anything", MIN_FUNCTION {
 		if (args.size() < 2) return {};
-		if (args[0] != "packet") return {};
+		if (!(args[0] == "packet")) return {};
 
 		auto view_id = (bbb::ViewId)(int)args[1];
 		auto view = bbb::Runtime::instance().packet_store.get_view(view_id);
@@ -51,7 +49,7 @@ public:
 				atoms a;
 				a.push_back("packet");
 				a.push_back((int)view_id);
-				outlets[i]->send(a);
+				send_to_outlet(outlets_[i], a);
 				return {};
 			}
 		}
@@ -62,14 +60,20 @@ public:
 
 private:
 	std::vector<std::string> route_keys_;
+	std::vector<void*> outlets_;
+	void* unmatched_outlet_ = nullptr;
+
+	void send_to_outlet(void* out, const atoms& a) {
+		if (!out || a.empty()) return;
+		outlet_do_send(out, a);
+	}
 
 	void send_unmatched(bbb::ViewId view_id) {
-		if (outlets.empty()) return;
-		auto &unmatched = outlets.back();
+		if (!unmatched_outlet_) return;
 		atoms a;
 		a.push_back("packet");
 		a.push_back((int)view_id);
-		unmatched->send(a);
+		send_to_outlet(unmatched_outlet_, a);
 	}
 };
 
@@ -79,9 +83,9 @@ bbb_zmq_routepass::bbb_zmq_routepass(const atoms &args) {
 	}
 
 	for (size_t i = 0; i < route_keys_.size(); ++i) {
-		outlets.push_back(std::make_unique<outlet<>>(this, "matched " + route_keys_[i]));
+		outlets_.push_back(c74::max::outlet_new(c74::min::object_base::maxobj(), nullptr));
 	}
-	outlets.push_back(std::make_unique<outlet<>>(this, "unmatched"));
+	unmatched_outlet_ = c74::max::outlet_new(c74::min::object_base::maxobj(), nullptr);
 }
 
 MIN_EXTERNAL(bbb_zmq_routepass);

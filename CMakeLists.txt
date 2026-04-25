@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.19)
 
+if(NOT CMAKE_OSX_ARCHITECTURES)
+	set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "macOS architecture" FORCE)
+endif()
+
 set(C74_MIN_API_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern/min-api)
 include(${C74_MIN_API_DIR}/script/min-package.cmake)
 

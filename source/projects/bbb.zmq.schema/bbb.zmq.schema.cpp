@@ -6,6 +6,13 @@
 #include <fstream>
 #include <sstream>
 
+#ifdef _WIN32
+#include <direct.h>
+#define IS_ABSOLUTE(p) ((p).size() >= 2 && (p)[1] == ':')
+#else
+#define IS_ABSOLUTE(p) (!(p).empty() && (p)[0] == '/')
+#endif
+
 using namespace c74::min;
 
 class bbb_zmq_schema : public object<bbb_zmq_schema> {
@@ -19,11 +26,11 @@ public:
 	outlet<> status_out {this, "status"};
 	outlet<> error_out {this, "errors"};
 
-	attribute<std::string> schema_name {this, "name", "",
+	attribute<symbol> schema_name {this, "name", "",
 		description {"Schema name for registration"}
 	};
 
-	attribute<std::string> file_path {this, "file", "",
+	attribute<symbol> file_path {this, "file", "",
 		description {"Path to .zmqdsl file"}
 	};
 
@@ -31,14 +38,14 @@ public:
 		description {"Auto-compile on set (0 or 1)"}
 	};
 
-	message<> read_msg {this, "read", "Read schema from file", [this](const atoms &args) -> atoms {
+	message<> read_msg {this, "read", MIN_FUNCTION {
 		if (args.size() < 1) return {};
 		auto path = (std::string)args[0];
 		read_file(path);
 		return {};
 	}};
 
-	message<> reload_msg {this, "reload", "Reload from @file path", [this](const atoms &args) -> atoms {
+	message<> reload_msg {this, "reload", MIN_FUNCTION {
 		auto fp = file_path.get();
 		if (!fp.empty()) {
 			read_file(fp);
@@ -46,7 +53,7 @@ public:
 		return {};
 	}};
 
-	message<> set_msg {this, "set", "Set DSL text", [this](const atoms &args) -> atoms {
+	message<> set_msg {this, "set", MIN_FUNCTION {
 		text_buffer_.clear();
 		for (size_t i = 0; i < args.size(); ++i) {
 			if (i > 0) text_buffer_ += " ";
@@ -58,7 +65,7 @@ public:
 		return {};
 	}};
 
-	message<> append_msg {this, "append", "Append DSL line", [this](const atoms &args) -> atoms {
+	message<> append_msg {this, "append", MIN_FUNCTION {
 		text_buffer_ += "\n";
 		for (size_t i = 0; i < args.size(); ++i) {
 			if (i > 0) text_buffer_ += " ";
@@ -67,17 +74,17 @@ public:
 		return {};
 	}};
 
-	message<> clear_msg {this, "clear", "Clear text buffer", [this](const atoms &args) -> atoms {
+	message<> clear_msg {this, "clear", MIN_FUNCTION {
 		text_buffer_.clear();
 		return {};
 	}};
 
-	message<> compile_msg {this, "compile", "Compile current text buffer", [this](const atoms &args) -> atoms {
+	message<> compile_msg {this, "compile", MIN_FUNCTION {
 		compile_text();
 		return {};
 	}};
 
-	message<> dump_msg {this, "dump", "Dump registered schemas", [this](const atoms &args) -> atoms {
+	message<> dump_msg {this, "dump", MIN_FUNCTION {
 		auto names = bbb::Runtime::instance().schema_registry.names();
 		for (auto &name : names) {
 			status_out.send("registered", name);
@@ -85,7 +92,7 @@ public:
 		return {};
 	}};
 
-	message<> write_msg {this, "write", "Write text buffer to file", [this](const atoms &args) -> atoms {
+	message<> write_msg {this, "write", MIN_FUNCTION {
 		if (args.size() < 1) return {};
 		auto path = (std::string)args[0];
 		std::ofstream ofs(path);
@@ -98,7 +105,7 @@ public:
 		return {};
 	}};
 
-	message<> anything_msg {this, "anything", "Handle unknown messages", [this](const atoms &args) -> atoms {
+	message<> anything_msg {this, "anything", MIN_FUNCTION {
 		return {};
 	}};
 
@@ -106,15 +113,42 @@ private:
 	std::string text_buffer_;
 
 	void read_file(const std::string &path) {
-		std::ifstream ifs(path);
+		std::string resolved = path;
+		if (!IS_ABSOLUTE(path)) {
+			c74::max::t_object *box = nullptr;
+			c74::max::object_obex_lookup(maxobj(), c74::max::gensym("#B"), (c74::max::t_object **)&box);
+			if (!box) {
+				error_out.send("error", "read_file: no box");
+			} else {
+				auto patcher = (c74::max::t_object *)c74::max::object_attr_getobj(box, c74::max::gensym("patcher"));
+				if (!patcher) {
+					error_out.send("error", "read_file: no patcher");
+				} else {
+					auto fp_sym = (c74::max::t_symbol *)c74::max::object_attr_getsym(patcher, c74::max::gensym("filepath"));
+					if (!fp_sym || fp_sym->s_name[0] == '\0') {
+						error_out.send("error", "read_file: patcher has no filepath (save the patch first?)");
+					} else {
+						short path_id = 0;
+						char filename[c74::max::MAX_PATH_CHARS];
+						if (c74::max::path_frompathname(fp_sym->s_name, &path_id, filename) == 0) {
+							char dir_syspath[c74::max::MAX_PATH_CHARS];
+							if (c74::max::path_toabsolutesystempath(path_id, "", dir_syspath) == 0) {
+								resolved = std::string(dir_syspath) + "/" + path;
+							}
+						}
+					}
+				}
+			}
+		}
+		std::ifstream ifs(resolved);
 		if (!ifs.is_open()) {
-			error_out.send("error", "could not read " + path);
+			error_out.send("error", "could not read " + resolved);
 			return;
 		}
 		std::ostringstream ss;
 		ss << ifs.rdbuf();
 		text_buffer_ = ss.str();
-		file_path = path;
+		file_path = resolved;
 		compile_text();
 	}
 
@@ -143,7 +177,7 @@ private:
 			return;
 		}
 
-		auto name_override = schema_name.get();
+		auto name_override = std::string(schema_name.get());
 
 		for (auto &cs : compile_result.schemas) {
 			std::string reg_name = name_override.empty() ? cs.name : name_override;

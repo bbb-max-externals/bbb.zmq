@@ -18,11 +18,11 @@ public:
 	inlet<> input {this, "(messages)"};
 	outlet<> output {this, "packet view handle"};
 
-	attribute<std::string> endpoint {this, "endpoint", "tcp://*:5555",
+	attribute<symbol> endpoint {this, "endpoint", "tcp://*:5555",
 		description {"ZMQ endpoint to bind/connect to"}
 	};
 
-	attribute<std::string> socket_type {this, "type", "sub",
+	attribute<symbol> socket_type {this, "type", "sub",
 		description {"Socket type: sub, pull, rep, router"}
 	};
 
@@ -30,7 +30,7 @@ public:
 		description {"1 = bind, 0 = connect"}
 	};
 
-	attribute<std::string> subscribe {this, "subscribe", "",
+	attribute<symbol> subscribe {this, "subscribe", "",
 		description {"Subscription topic (sub sockets only)"}
 	};
 
@@ -41,22 +41,22 @@ public:
 	bbb_zmq_recv(const atoms &args = {});
 	~bbb_zmq_recv();
 
-	message<> start_msg {this, "start", "Start receiving", [this](const atoms &args) -> atoms {
+	message<> start_msg {this, "start", MIN_FUNCTION {
 		start();
 		return {};
 	}};
 
-	message<> stop_msg {this, "stop", "Stop receiving", [this](const atoms &args) -> atoms {
+	message<> stop_msg {this, "stop", MIN_FUNCTION {
 		stop();
 		return {};
 	}};
 
-	message<> bang_msg {this, "bang", "Start receiving", [this](const atoms &args) -> atoms {
+	message<> bang_msg {this, "bang", MIN_FUNCTION {
 		start();
 		return {};
 	}};
 
-	message<> anything {this, "anything", "Handle messages", [this](const atoms &args) -> atoms {
+	message<> anything {this, "anything", MIN_FUNCTION {
 		return {};
 	}};
 
@@ -77,7 +77,7 @@ private:
 	std::queue<PendingPacket> pending_;
 	std::mutex pending_mutex_;
 
-	timer<timer_options::deliver_on_scheduler> deliver_ {this, [this]() {
+	timer<timer_options::deliver_on_scheduler> deliver_ {this, MIN_FUNCTION {
 		std::queue<PendingPacket> to_deliver;
 		{
 			std::lock_guard<std::mutex> lock(pending_mutex_);
@@ -91,11 +91,11 @@ private:
 			output.send(a);
 			to_deliver.pop();
 		}
+		return {};
 	}};
 };
 
 bbb_zmq_recv::bbb_zmq_recv(const atoms &args) {
-	argument<std::string> endpoint_arg {this, "endpoint", "ZMQ endpoint"};
 }
 
 bbb_zmq_recv::~bbb_zmq_recv() {
@@ -109,7 +109,7 @@ void bbb_zmq_recv::start() {
 		context_ = std::make_unique<zmq::context_t>(1);
 		zmq::socket_type ztype = zmq::socket_type::sub;
 
-		auto stype = socket_type.get();
+		auto stype = std::string(socket_type.get());
 		if (stype == "pull") ztype = zmq::socket_type::pull;
 		else if (stype == "rep") ztype = zmq::socket_type::rep;
 		else if (stype == "router") ztype = zmq::socket_type::router;
@@ -118,7 +118,7 @@ void bbb_zmq_recv::start() {
 		socket_ = std::make_unique<zmq::socket_t>(*context_, ztype);
 		socket_->set(zmq::sockopt::rcvhwm, hwm.get());
 
-		auto ep = endpoint.get();
+		auto ep = std::string(endpoint.get());
 		if (bind_mode.get()) {
 			socket_->bind(ep);
 		} else {
@@ -126,7 +126,7 @@ void bbb_zmq_recv::start() {
 		}
 
 		if (ztype == zmq::socket_type::sub) {
-			auto sub = subscribe.get();
+			auto sub = std::string(subscribe.get());
 			if (sub.empty()) {
 				socket_->set(zmq::sockopt::subscribe, "");
 			} else {
@@ -137,7 +137,7 @@ void bbb_zmq_recv::start() {
 		running_ = true;
 		thread_ = std::make_unique<std::thread>(&bbb_zmq_recv::recv_loop, this);
 	} catch (const zmq::error_t &e) {
-		cerr << "bbb.zmq.recv: " << e.what() << std::endl;
+		cerr << ("bbb.zmq.recv: " + std::string(e.what())) << endl;
 	}
 }
 
@@ -163,7 +163,7 @@ void bbb_zmq_recv::recv_loop() {
 			}
 
 			bbb::Packet packet;
-			packet.endpoint = endpoint.get();
+			packet.endpoint = std::string(endpoint.get());
 			packet.received_time = bbb::now_epoch_seconds();
 
 			{

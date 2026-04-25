@@ -5,6 +5,7 @@ file(GLOB SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 add_library(${PROJECT_NAME} MODULE ${SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
+	${C74_INCLUDES}
 	${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/include
 	${CMAKE_CURRENT_SOURCE_DIR}/../../../extern/cppzmq
 	${CMAKE_CURRENT_SOURCE_DIR}/../../../extern/libzmq/include

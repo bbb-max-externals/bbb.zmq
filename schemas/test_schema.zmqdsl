@@ -1,0 +1,7 @@
+schema test_schema {
+	endian big;
+	u8 id;
+	i32 value;
+	f32 temp;
+	emit id value temp;
+}

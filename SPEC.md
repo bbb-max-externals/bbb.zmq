@@ -12,15 +12,16 @@ The main design goal is to preserve the Max idiom of patch-cord routing while av
 
 ## 1. Object Set
 
-The proposed v0.1 object set is:
+The v0.1 object set:
 
 ```text
 bbb.zmq.recv       ZeroMQ receiver
+bbb.zmq.send       ZeroMQ sender (pub/push/pair)
 bbb.zmq.route      Max-like multipart frame router; consumes matched frame
 bbb.zmq.routepass  Max-like multipart frame router; does not consume matched frame
 bbb.zmq.schema     DSL loader/compiler/registry object
 bbb.zmq.parse      PacketView parser using compiled DSL schema
-bbb.zmq.peek       Optional debugging object for inspecting packet frames/fields
+bbb.zmq.peek       Debugging object for inspecting packet frames/fields
 ```
 
 Minimum implementation set:
@@ -40,8 +41,8 @@ bbb.zmq.parse
 The system is composed of four conceptual layers:
 
 ```text
-ZMQ socket / receiver
-  ↓
+ZMQ socket / receiver / sender
+  ↓↑
 PacketStore / PacketView runtime
   ↓
 Max-style routing objects
@@ -57,7 +58,7 @@ packet <id>
 
 The actual ZMQ message frames remain in an internal C++ runtime.
 
-Typical patch:
+Typical receive patch:
 
 ```text
 [bbb.zmq.recv @endpoint tcp://*:5555 @type sub]
@@ -67,6 +68,12 @@ Typical patch:
 [bbb.zmq.parse imu]
 |
 [route timestamp accel gyro]
+```
+
+Typical send patch:
+
+```text
+[42 3.14] → [bbb.zmq.send @endpoint tcp://*:5556 @type pub]
 ```
 
 ---
@@ -1281,7 +1288,91 @@ The `bbb.zmq.schema` object stores a text buffer and compiles it on `compile` or
 
 ---
 
-## 16. v0.1 Non-goals
+## 16. Sender Object
+
+## 16.1 `bbb.zmq.send`
+
+`bbb.zmq.send` sends ZMQ messages. It runs a background thread with a queue so that Max's scheduler is never blocked.
+
+v0.1 supports unidirectional socket types: `pub`, `push`, `pair`.
+
+### Attributes
+
+```text
+@endpoint <symbol>   default: tcp://*:5556
+@type <symbol>       default: pub        (pub, push, pair)
+@bind <int>          default: 1          (1=bind, 0=connect)
+@hwm <int>           default: 1000       (SNDHWM)
+@endian <symbol>     default: big        (big, little)
+```
+
+### Messages
+
+```text
+start              create socket, start send thread
+stop               stop send thread, cleanup
+bang               alias for start
+send <atoms>       encode atoms → single frame, send immediately
+frame <atoms>      add type-aware frame to multipart buffer
+frame_bytes <ints> add raw byte frame (each int = byte 0-255)
+flush              send buffered frames as multipart, clear buffer
+```
+
+### Type-aware encoding
+
+`send` and `frame` encode atoms by Max type:
+
+| Max type | Encoding | Size |
+|----------|----------|------|
+| int/long | int64_t in configured byte order | 8 bytes |
+| float | double (IEEE 754) in configured byte order | 8 bytes |
+| symbol | raw UTF-8 bytes | variable |
+
+Example:
+
+```text
+send sensor 42 3.14
+```
+
+Encodes to one frame:
+
+```text
+sensor       (6 bytes: s e n s o r)
+42           (8 bytes: int64 BE 0x000000000000002A)
+3.14         (8 bytes: double BE)
+```
+
+### Multipart sending
+
+Use `frame` to buffer frames, then `flush` to send:
+
+```text
+[frame sensor]     \
+[frame 42 3.14]     → same scheduler tick via trigger → bbb.zmq.send
+[flush]            /
+```
+
+For explicit raw bytes:
+
+```text
+[frame_bytes 1 0 0 0 42]
+```
+
+### Thread model
+
+Send operations are enqueued and processed by a background thread using `condition_variable`. This avoids blocking Max's scheduler and ensures zero CPU overhead when idle.
+
+### Future
+
+```text
+- req/dealer socket types (bidirectional)
+- bbb.zmq.encode standalone encoder
+- reply output on separate outlet
+```
+
+---
+
+## 17. v0.1 Non-goals
 
 The following are intentionally deferred:
 
@@ -1299,18 +1390,21 @@ JSON decoding
 schema-aware routing
 file watching
 prefix route mode
+bbb.zmq.encode standalone binary encoder
+req/dealer bidirectional sockets
 ```
 
 These should be considered Phase 2 or later.
 
 ---
 
-## 17. Recommended Initial Implementation
+## 18. Recommended Initial Implementation
 
 Implement first:
 
 ```text
 bbb.zmq.recv
+bbb.zmq.send
 bbb.zmq.route
 bbb.zmq.routepass
 bbb.zmq.schema
@@ -1324,7 +1418,7 @@ ParserVM or equivalent compiled parser
 Max scheduler-safe dispatch bridge
 ```
 
-DSL v0.1 implementation set:
+## 19. DSL v0.1 implementation set
 
 ```text
 schema
