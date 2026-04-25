@@ -98,6 +98,17 @@ public:
 	}};
 
 	message<> anything {this, "anything", MIN_FUNCTION {
+		if (args.size() >= 1 && args[0] == "jit_matrix" && args.size() >= 2) {
+			auto s = (std::string)args[1];
+			c74::max::t_symbol *mtx_name = c74::max::gensym(s.c_str());
+			c74::max::t_jit_object *mtx = (c74::max::t_jit_object *)c74::max::jit_object_findregistered(mtx_name);
+			if (mtx) {
+				auto frame = extract_matrix_frame(mtx);
+				OutgoingMessage msg;
+				msg.frames.push_back(std::move(frame));
+				enqueue(std::move(msg));
+			}
+		}
 		return {};
 	}};
 
@@ -111,6 +122,7 @@ private:
 	void send_loop();
 	void enqueue(OutgoingMessage &&msg);
 	bbb::Frame encode_atoms(const atoms &args);
+	bbb::Frame extract_matrix_frame(c74::max::t_jit_object *mtx);
 
 	bool is_big_endian() {
 		auto e = std::string(byte_order.get());
@@ -238,6 +250,44 @@ bbb::Frame bbb_zmq_send::encode_atoms(const atoms &args) {
 			out.insert(out.end(), s.begin(), s.end());
 		}
 	}
+	return out;
+}
+
+bbb::Frame bbb_zmq_send::extract_matrix_frame(c74::max::t_jit_object *mtx) {
+	bbb::Frame out;
+
+	c74::max::t_jit_object *info = (c74::max::t_jit_object *)c74::max::jit_object_method(mtx, c74::max::_jit_sym_getinfo);
+	if (!info) return out;
+
+	long dim[2] = {0, 0};
+	c74::max::jit_object_method(info, c74::max::_jit_sym_getinfo, c74::max::_jit_sym_dim, dim, 0L, 0L);
+
+	long dimstride[2] = {0, 0};
+	c74::max::jit_object_method(info, c74::max::_jit_sym_getinfo, c74::max::gensym("dimstride"), dimstride, 0L, 0L);
+
+	long planecount = 1;
+	c74::max::jit_object_method(info, c74::max::_jit_sym_getinfo, c74::max::_jit_sym_planecount, &planecount, 0L, 0L);
+
+	c74::max::t_symbol *type_sym = c74::max::_jit_sym_char;
+	c74::max::jit_object_method(info, c74::max::_jit_sym_getinfo, c74::max::_jit_sym_type, &type_sym, 0L, 0L);
+
+	size_t cell_sz = 1;
+	if (type_sym == c74::max::_jit_sym_long) cell_sz = 4;
+	else if (type_sym == c74::max::_jit_sym_float32) cell_sz = 4;
+	else if (type_sym == c74::max::_jit_sym_float64) cell_sz = 8;
+
+	char *bp = nullptr;
+	c74::max::jit_object_method(mtx, c74::max::_jit_sym_getdata, &bp);
+	if (!bp) return out;
+
+	size_t row_bytes = (size_t)(dim[0] * planecount) * cell_sz;
+	out.reserve(row_bytes * dim[1]);
+
+	for (long y = 0; y < dim[1]; ++y) {
+		char *row = bp + y * dimstride[1];
+		out.insert(out.end(), row, row + row_bytes);
+	}
+
 	return out;
 }
 
