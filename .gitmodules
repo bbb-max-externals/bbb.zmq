@@ -20,3 +20,7 @@
 	path = extern/max-sdk-base
 	url = https://github.com/Cycling74/max-sdk.git
 	branch = main
+[submodule ".agents/skills/max-external-githubactions"]
+	path = .agents/skills/max-external-githubactions
+	url = git@github.com:2bbb/max-external-githubactions.git
+	branch = main

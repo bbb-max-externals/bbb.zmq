@@ -2,7 +2,7 @@
 	"author" : "2bit",
 	"description" : "Max/MSP externals for ZeroMQ integration with binary payload parsing via a small DSL.",
 	"max_version_min" : "8.0", "max_version_max" : "none",
-	"name" : "bbb.zmq",
+	"name" : "@C74_PACKAGE_NAME@",
 	"os" : {
 		"macintosh" : {
 			"platform" : [ "x64", "aarch64" ],
@@ -20,6 +20,6 @@
 		"exclude_from_collectives" : "no"
 	},
 	"tags" : [ "network", "zmq", "zeromq" ],
-	"version" : "1.0.0",
+	"version" : "@GIT_VERSION_MAJ@.@GIT_VERSION_MIN@.@GIT_VERSION_SUB@",
 	"website" : "https://github.com/2bbb/bbb.zmq"
 }
