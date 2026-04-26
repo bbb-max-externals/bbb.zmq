@@ -47,6 +47,12 @@ function(bbb_add_external)
     # --- universal binary (macOS) ---
     if(APPLE AND NOT CMAKE_OSX_ARCHITECTURES)
         set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE STRING "macOS architecture" FORCE)
+        set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" PARENT_SCOPE)
+    endif()
+
+    # --- Windows: ZMQ_STATIC for static libzmq linking ---
+    if(WIN32)
+        add_compile_definitions(ZMQ_STATIC)
     endif()
 
     # --- collect sources ---
