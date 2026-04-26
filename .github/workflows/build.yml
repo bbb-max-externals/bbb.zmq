@@ -11,10 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: false
-
-      - name: Init build submodules
-        run: git submodule update --init extern/min-api extern/max-sdk extern/cppzmq extern/libzmq
+          submodules: recursive
 
       - name: Configure
         run: cmake -B build -G Xcode
@@ -30,10 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: false
-
-      - name: Init build submodules
-        run: git submodule update --init extern/min-api extern/max-sdk extern/cppzmq extern/libzmq
+          submodules: recursive
 
       - name: Configure
         run: cmake -B build -G "Visual Studio 17 2022" -A x64

@@ -16,3 +16,7 @@
 [submodule ".agents/skills/max-patgen"]
 	path = .agents/skills/max-patgen
 	url = git@github.com:2bbb/max-patgen.git
+[submodule "extern/max-sdk-base"]
+	path = extern/max-sdk-base
+	url = https://github.com/Cycling74/max-sdk.git
+	branch = main

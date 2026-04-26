@@ -50,11 +50,6 @@ function(bbb_add_external)
         set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" PARENT_SCOPE)
     endif()
 
-    # --- Windows: ZMQ_STATIC for static libzmq linking ---
-    if(WIN32)
-        add_compile_definitions(ZMQ_STATIC)
-    endif()
-
     # --- collect sources ---
     if(ARG_SOURCES)
         set(_sources ${ARG_SOURCES})
