@@ -193,6 +193,15 @@ The test patch (`bbb.zmq.test.maxpat`) is configured for self-testing:
 2. Click `send sensor 42 3.14` — loopback through ZMQ
 3. Route → parse → see decoded output
 
+## Dependencies
+
+| Library | License | Notes |
+|---------|---------|-------|
+| [libzmq](https://github.com/zeromq/libzmq) | MPL-2.0 | ZeroMQ C library (built as static) |
+| [cppzmq](https://github.com/zeromq/cppzmq) | MIT | ZeroMQ C++ bindings (header-only) |
+| [min-api](https://github.com/Cycling74/min-api) | MIT | Cycling '74 modern C++ API for Max externals |
+| [max-sdk-base](https://github.com/Cycling74/max-sdk-base) | Cycling '74 EULA | Max SDK headers and libs |
+
 ## What v0.1 Does Not Include Yet
 
 ```text
