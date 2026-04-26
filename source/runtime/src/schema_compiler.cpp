@@ -2,6 +2,7 @@
 #include "bbb/dsl_ast.hpp"
 #include <cstring>
 #include <cstdlib>
+#include <unordered_map>
 
 namespace bbb {
 

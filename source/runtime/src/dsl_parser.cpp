@@ -1,6 +1,7 @@
 #include "bbb/dsl_ast.hpp"
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 
 namespace bbb::dsl {
 
