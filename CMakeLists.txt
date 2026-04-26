@@ -27,6 +27,9 @@ set(BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(ENABLE_WS OFF CACHE BOOL "" FORCE)
 set(WITH_DOCS OFF CACHE BOOL "" FORCE)
 set(ENABLE_DRAFTS OFF CACHE BOOL "" FORCE)
+if(MSVC)
+	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "" FORCE)
+endif()
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/extern/libzmq)
 
 # --- shared runtime library ---
