@@ -10,3 +10,9 @@
 [submodule "extern/libzmq"]
 	path = extern/libzmq
 	url = https://github.com/zeromq/libzmq.git
+[submodule ".agents/skills/max-external"]
+	path = .agents/skills/max-external
+	url = git@github.com:2bbb/max-external.git
+[submodule ".agents/skills/max-patgen"]
+	path = .agents/skills/max-patgen
+	url = git@github.com:2bbb/max-patgen.git

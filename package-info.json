@@ -1,0 +1,30 @@
+{
+    "title": "bbb.zmq",
+    "description": "Max/MSP external package for ZeroMQ integration with binary payload parsing via a small DSL",
+    "author": "2bit",
+    "website": "",
+    "extends": "",
+    "extensible": 0,
+    "homepatcher": "",
+    "max_version_min": "8.0",
+    "os": {
+        "macintosh": {
+            "externals": [
+                "externals/"
+            ],
+            "help": [
+                "help/"
+            ]
+        }
+    },
+    "filelist": {
+        "externals/bbb.zmq.recv.mxo": {},
+        "externals/bbb.zmq.send.mxo": {},
+        "externals/bbb.zmq.route.mxo": {},
+        "externals/bbb.zmq.routepass.mxo": {},
+        "externals/bbb.zmq.schema.mxo": {},
+        "externals/bbb.zmq.parse.mxo": {},
+        "externals/bbb.zmq.peek.mxo": {},
+        "externals/libbbb_zmq_runtime.dylib": {}
+    }
+}
