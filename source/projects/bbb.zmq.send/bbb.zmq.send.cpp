@@ -125,7 +125,7 @@ private:
 	bbb::Frame extract_matrix_frame(c74::max::t_jit_object *mtx);
 
 	bool is_big_endian() {
-		auto e = std::string(byte_order.get());
+		auto e = std::string(byte_order.get().c_str());
 		return e != "little";
 	}
 
@@ -164,14 +164,14 @@ void bbb_zmq_send::start() {
 		context_ = std::make_unique<zmq::context_t>(1);
 		zmq::socket_type ztype = zmq::socket_type::pub;
 
-		auto stype = std::string(socket_type.get());
+		auto stype = std::string(socket_type.get().c_str());
 		if (stype == "push") ztype = zmq::socket_type::push;
 		else if (stype == "pair") ztype = zmq::socket_type::pair;
 
 		socket_ = std::make_unique<zmq::socket_t>(*context_, ztype);
 		socket_->set(zmq::sockopt::sndhwm, hwm.get());
 
-		auto ep = std::string(endpoint.get());
+		auto ep = std::string(endpoint.get().c_str());
 		if (bind_mode.get()) {
 			socket_->bind(ep);
 		} else {

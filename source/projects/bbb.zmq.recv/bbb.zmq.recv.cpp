@@ -109,7 +109,7 @@ void bbb_zmq_recv::start() {
 		context_ = std::make_unique<zmq::context_t>(1);
 		zmq::socket_type ztype = zmq::socket_type::sub;
 
-		auto stype = std::string(socket_type.get());
+		auto stype = std::string(socket_type.get().c_str());
 		if (stype == "pull") ztype = zmq::socket_type::pull;
 		else if (stype == "rep") ztype = zmq::socket_type::rep;
 		else if (stype == "router") ztype = zmq::socket_type::router;
@@ -118,7 +118,7 @@ void bbb_zmq_recv::start() {
 		socket_ = std::make_unique<zmq::socket_t>(*context_, ztype);
 		socket_->set(zmq::sockopt::rcvhwm, hwm.get());
 
-		auto ep = std::string(endpoint.get());
+		auto ep = std::string(endpoint.get().c_str());
 		if (bind_mode.get()) {
 			socket_->bind(ep);
 		} else {
@@ -126,7 +126,7 @@ void bbb_zmq_recv::start() {
 		}
 
 		if (ztype == zmq::socket_type::sub) {
-			auto sub = std::string(subscribe.get());
+			auto sub = std::string(subscribe.get().c_str());
 			if (sub.empty()) {
 				socket_->set(zmq::sockopt::subscribe, "");
 			} else {
@@ -161,7 +161,7 @@ void bbb_zmq_recv::recv_loop() {
 			}
 
 			bbb::Packet packet;
-			packet.endpoint = std::string(endpoint.get());
+			packet.endpoint = std::string(endpoint.get().c_str());
 			packet.received_time = bbb::now_epoch_seconds();
 
 			{

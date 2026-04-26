@@ -129,7 +129,7 @@ public:
 			return {};
 		}
 
-		auto name = schema_name_.empty() ? std::string(schema_attr.get()) : schema_name_;
+		auto name = schema_name_.empty() ? std::string(schema_attr.get().c_str()) : schema_name_;
 		if (name.empty()) {
 			error_out.send("error", "schema_not_specified");
 			return {};

@@ -177,7 +177,7 @@ private:
 			return;
 		}
 
-		auto name_override = std::string(schema_name.get());
+		auto name_override = std::string(schema_name.get().c_str());
 
 		for (auto &cs : compile_result.schemas) {
 			std::string reg_name = name_override.empty() ? cs.name : name_override;
