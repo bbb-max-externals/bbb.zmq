@@ -1,0 +1,15 @@
+{
+  "name": "bbb-zmq-tests",
+  "private": true,
+  "description": "Integration tests for bbb.zmq Max externals via ZeroMQ",
+  "scripts": {
+    "send:imu": "node send-imu.js",
+    "send:simple": "node send-simple.js",
+    "send:text": "node send-text.js",
+    "send:all": "node run-all.js",
+    "recv": "node recv.js"
+  },
+  "dependencies": {
+    "zeromq": "^6.4.0"
+  }
+}

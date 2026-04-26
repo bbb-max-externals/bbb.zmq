@@ -1,0 +1,14 @@
+schema imu {
+	endian little;
+	u16 magic = 0xCAFE;
+	u8 version;
+	u8 type;
+	u64 timestamp;
+	f32 accel[3];
+	f32 gyro[3];
+	emit timestamp timestamp;
+	emit version version;
+	emit type type;
+	emit accel accel[0] accel[1] accel[2];
+	emit gyro gyro[0] gyro[1] gyro[2];
+}
