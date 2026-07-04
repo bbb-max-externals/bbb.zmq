@@ -338,7 +338,7 @@ private:
 					consume(TokenType::RBracket, "expected ']'");
 				}
 				if (match(TokenType::At)) {
-					if (check(TokenType::Ident)) {
+					if (check(TokenType::Ident) || check(TokenType::String) || check(TokenType::Matrix)) {
 						expr.modifier = advance().text;
 					}
 				}

@@ -3,6 +3,7 @@ project(bbb.zmq)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+option(BBB_ZMQ_BUILD_TESTS "Build bbb.zmq runtime tests" OFF)
 
 # --- load bbb_add_external() ---
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/bbb_external.cmake)
@@ -54,5 +55,28 @@ foreach(project_dir ${PROJECT_DIRS})
 		add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/source/projects/${project_dir})
 	endif()
 endforeach()
+
+if(BBB_ZMQ_BUILD_TESTS)
+	enable_testing()
+	set(CMAKE_EXE_LINKER_FLAGS "")
+	foreach(config DEBUG RELEASE RELWITHDEBINFO MINSIZEREL)
+		set(CMAKE_EXE_LINKER_FLAGS_${config} "")
+	endforeach()
+	add_executable(bbb_zmq_runtime_tests
+		tests/runtime_tests.cpp
+		source/runtime/src/packet_store.cpp
+		source/runtime/src/dsl_lexer.cpp
+		source/runtime/src/dsl_parser.cpp
+		source/runtime/src/schema_compiler.cpp
+		source/runtime/src/schema_registry.cpp
+		source/runtime/src/parser_vm.cpp
+		source/runtime/src/runtime.cpp
+	)
+	target_include_directories(bbb_zmq_runtime_tests PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}/source/runtime/include
+	)
+	target_compile_features(bbb_zmq_runtime_tests PRIVATE cxx_std_17)
+	add_test(NAME bbb_zmq_runtime_tests COMMAND bbb_zmq_runtime_tests)
+endif()
 
 set(CMAKE_SUPPRESS_REGENERATION true)

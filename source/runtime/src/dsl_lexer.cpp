@@ -33,6 +33,7 @@ const char *token_type_name(TokenType t) {
 	case TokenType::F64: return "f64";
 	case TokenType::Bytes: return "bytes";
 	case TokenType::String: return "string";
+	case TokenType::Matrix: return "matrix";
 	case TokenType::Ident: return "identifier";
 	case TokenType::Integer: return "integer";
 	case TokenType::Float_: return "float";
@@ -41,6 +42,7 @@ const char *token_type_name(TokenType t) {
 	case TokenType::RBrace: return "}";
 	case TokenType::LBracket: return "[";
 	case TokenType::RBracket: return "]";
+	case TokenType::Colon: return ":";
 	case TokenType::Equals: return "=";
 	case TokenType::Semicolon: return ";";
 	case TokenType::At: return "@";
