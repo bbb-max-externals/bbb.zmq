@@ -124,6 +124,29 @@ function(bbb_add_external)
         endif()
     endif()
 
+    # --- stable public bundle identifier ---
+    if(APPLE)
+        string(TOLOWER "${${PROJECT_NAME}_EXTERN_OUTPUT_NAME}" _bbb_identifier_component)
+        string(REGEX REPLACE "[^a-z0-9.-]+" "-" _bbb_identifier_component "${_bbb_identifier_component}")
+        string(REGEX REPLACE "^-+" "" _bbb_identifier_component "${_bbb_identifier_component}")
+        string(REGEX REPLACE "-+$" "" _bbb_identifier_component "${_bbb_identifier_component}")
+        set(AUTHOR_DOMAIN "jp.2bit")
+        set(BUNDLE_IDENTIFIER "${_bbb_identifier_component}")
+    endif()
+
     # --- min-api post-target ---
     include(${C74_MIN_API_DIR}/script/min-posttarget.cmake)
+    if(APPLE)
+        set(_bbb_info_plist "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-Info.plist")
+        configure_file(
+            "${C74_MIN_API_DIR}/max-sdk-base/script/Info.plist.in"
+            "${_bbb_info_plist}"
+            @ONLY
+        )
+        set_target_properties(${PROJECT_NAME} PROPERTIES
+            MACOSX_BUNDLE_INFO_PLIST "${_bbb_info_plist}"
+            MACOSX_BUNDLE_GUI_IDENTIFIER "jp.2bit.${_bbb_identifier_component}"
+            XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "jp.2bit.${_bbb_identifier_component}"
+        )
+    endif()
 endfunction()
