@@ -1,5 +1,8 @@
 # bbb.zmq
 
+> [!WARNING]
+> This repository is published as AI-assisted, insufficiently tested work in progress ("AI slop"). Treat it as experimental. Correctness, stability, compatibility, and fitness for production use are not guaranteed.
+
 Max/MSP external package for ZeroMQ integration with binary payload parsing via a small DSL.
 
 ## Object Set
