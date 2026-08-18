@@ -21,5 +21,5 @@
 	},
 	"tags" : [ "network", "zmq", "zeromq" ],
 	"version" : "@GIT_VERSION_MAJ@.@GIT_VERSION_MIN@.@GIT_VERSION_SUB@",
-	"website" : "https://github.com/2bbb/bbb.zmq"
+	"website" : "https://github.com/bbb-max-externals/bbb.zmq"
 }
