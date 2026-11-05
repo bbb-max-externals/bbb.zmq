@@ -127,7 +127,11 @@ Patch cords still carry:
 packet <view-id>
 ```
 
-The runtime decides whether the ID refers to an original packet or a derived view.
+The ID always refers to a view, including the initial view at frame zero; it is
+not a `PacketId`. All views are valid only during the synchronous outlet call
+from `bbb.zmq.recv`. Returning from that call releases the packet and its views.
+Deferred or stored handles are invalid; parse or copy the payload before
+passing it across an asynchronous boundary.
 
 ---
 

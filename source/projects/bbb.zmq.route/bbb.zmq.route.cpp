@@ -20,9 +20,12 @@ public:
 		if (args.size() < 2) return {};
 		if (!(args[0] == "packet")) return {};
 
-		auto view_id = (bbb::ViewId)(int)args[1];
+		auto view_id = static_cast<bbb::ViewId>(static_cast<c74::max::t_atom_long>(args[1]));
 		auto view = bbb::Runtime::instance().packet_store.get_view(view_id);
-		if (!view) return {};
+		if (!view) {
+			cerr << "bbb.zmq.route: invalid or expired packet handle" << endl;
+			return {};
+		}
 
 		if (view->frame_count() == 0) {
 			send_unmatched(view_id);
@@ -49,7 +52,7 @@ public:
 				auto new_view_id = bbb::Runtime::instance().packet_store.create_view(view->packet->id, view->start_frame + 1);
 				atoms a;
 				a.push_back("packet");
-				a.push_back((int)new_view_id);
+				a.push_back(static_cast<c74::max::t_atom_long>(new_view_id));
 				send_to_outlet(outlets_[i], a);
 				return {};
 			}
@@ -73,7 +76,7 @@ private:
 		if (!unmatched_outlet_) return;
 		atoms a;
 		a.push_back("packet");
-		a.push_back((int)view_id);
+		a.push_back(static_cast<c74::max::t_atom_long>(view_id));
 		send_to_outlet(unmatched_outlet_, a);
 	}
 };

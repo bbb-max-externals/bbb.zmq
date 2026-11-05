@@ -71,27 +71,27 @@ private:
 	std::atomic<bool> running_{false};
 	std::mutex socket_mutex_;
 
-	struct PendingPacket {
-		bbb::PacketId packet_id;
-	};
-	std::queue<PendingPacket> pending_;
+	// Bound the application queue even when Max cannot drain its qelem.
+	static constexpr size_t max_pending_packets = 1024;
+	std::queue<bbb::Packet> pending_;
 	std::mutex pending_mutex_;
 
 	// Signalled from recv_loop (a plain std::thread), so this must be a
 	// qelem-based queue. timer::delay() calls clock_fdelay(), which is not safe
 	// to call off the main/scheduler thread.
 	queue<> deliver_ {this, MIN_FUNCTION {
-		std::queue<PendingPacket> to_deliver;
+		std::queue<bbb::Packet> to_deliver;
 		{
 			std::lock_guard<std::mutex> lock(pending_mutex_);
-			to_deliver = std::move(pending_);
+			to_deliver.swap(pending_);
 		}
 		while (!to_deliver.empty()) {
-			auto &pp = to_deliver.front();
-			atoms a;
-			a.push_back("packet");
-			a.push_back((int)pp.packet_id);
-			output.send(a);
+			bbb::Runtime::instance().packet_store.deliver(std::move(to_deliver.front()), [this](bbb::ViewId view_id) {
+				atoms a;
+				a.push_back("packet");
+				a.push_back(static_cast<c74::max::t_atom_long>(view_id));
+				output.send(a);
+			});
 			to_deliver.pop();
 		}
 		return {};
@@ -152,6 +152,9 @@ void bbb_zmq_recv::stop() {
 	thread_.reset();
 	socket_.reset();
 	context_.reset();
+	std::lock_guard<std::mutex> lock(pending_mutex_);
+	std::queue<bbb::Packet> empty;
+	pending_.swap(empty);
 }
 
 void bbb_zmq_recv::recv_loop() {
@@ -183,11 +186,12 @@ void bbb_zmq_recv::recv_loop() {
 				more = socket_->get(zmq::sockopt::rcvmore);
 			}
 
-			auto id = bbb::Runtime::instance().packet_store.store(std::move(packet));
-
 			{
 				std::lock_guard<std::mutex> lock(pending_mutex_);
-				pending_.push({id});
+				if (max_pending_packets <= pending_.size()) {
+					pending_.pop();
+				}
+				pending_.push(std::move(packet));
 			}
 			deliver_.set();
 		} catch (const zmq::error_t &e) {

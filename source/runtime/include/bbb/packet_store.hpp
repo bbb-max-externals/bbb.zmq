@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <mutex>
 #include <atomic>
+#include <functional>
 
 namespace bbb {
 
@@ -28,6 +29,9 @@ public:
 	static PacketStore &instance();
 
 	PacketId store(Packet packet);
+	// The root and all derived handles are valid only during this callback.
+	// No store lock is held while sending, so downstream routing may reenter.
+	void deliver(Packet packet, const std::function<void(ViewId)> &send);
 	std::shared_ptr<const PacketView> get_view(ViewId id) const;
 	std::shared_ptr<const Packet> get_packet(PacketId id) const;
 	ViewId create_view(PacketId packet_id, size_t start_frame);

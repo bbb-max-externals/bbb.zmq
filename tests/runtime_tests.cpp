@@ -11,6 +11,7 @@
 #include <cstring>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <variant>
 #include <vector>
@@ -275,6 +276,101 @@ void test_packet_store_and_registry() {
 	expect_equal(store.create_view(0, 0), bbb::ViewId{0}, "view creation fails for missing packet");
 	store.release_packet(packet_id);
 	expect(store.get_packet(packet_id) == nullptr, "release removes packet lookup");
+	expect(store.get_view(view_id) == nullptr, "release removes derived view lookup");
+	if(view) {
+		expect_equal(view->frame(0).at(0), std::uint8_t{0x03}, "borrowed view stays readable after release");
+	}
+}
+
+void test_packet_cleanup() {
+	auto &store = bbb::PacketStore::instance();
+	bbb::Packet expired_packet{};
+	expired_packet.frames = {bbb::Frame{0x01}, bbb::Frame{0x02}};
+	expired_packet.received_time = bbb::now_epoch_seconds() - 60.0;
+	const auto expired_id = store.store(std::move(expired_packet));
+	const auto expired_root_id = store.create_view(expired_id, 0);
+	const auto expired_view_id = store.create_view(expired_id, 1);
+	std::weak_ptr<const bbb::Packet> expired = store.get_packet(expired_id);
+
+	bbb::Packet recent_packet{};
+	recent_packet.frames = {bbb::Frame{0x03}};
+	recent_packet.received_time = bbb::now_epoch_seconds();
+	const auto recent_id = store.store(std::move(recent_packet));
+	const auto recent_view_id = store.create_view(recent_id, 0);
+
+	store.cleanup(30.0);
+	expect(!store.get_packet(expired_id), "cleanup removes expired packet lookup");
+	expect(!store.get_view(expired_root_id), "cleanup removes expired root view lookup");
+	expect(!store.get_view(expired_view_id), "cleanup removes expired derived view lookup");
+	expect(expired.expired(), "cleanup frees packet payload including its root view ownership");
+	expect(store.get_packet(recent_id) != nullptr, "cleanup preserves recent packet");
+	expect(store.get_view(recent_view_id) != nullptr, "cleanup preserves recent view");
+
+	std::weak_ptr<const bbb::Packet> recent = store.get_packet(recent_id);
+	store.release_packet(recent_id);
+	expect(recent.expired(), "release frees packet payload including all view ownership");
+}
+
+bbb::Packet make_delivery_packet() {
+	bbb::Packet packet{};
+	packet.frames = {bbb::Frame{0x01}, bbb::Frame(1024, 0x02)};
+	packet.received_time = bbb::now_epoch_seconds();
+	return packet;
+}
+
+void test_packet_delivery_lifetime() {
+	auto &store = bbb::PacketStore::instance();
+	bbb::ViewId previous_root{0};
+	for (size_t index = 0; index < 10000; ++index) {
+		bbb::PacketId packet_id{0};
+		bbb::ViewId root_id{0};
+		bbb::ViewId derived_id{0};
+		std::weak_ptr<const bbb::Packet> packet;
+		std::weak_ptr<const bbb::PacketView> root;
+		std::weak_ptr<const bbb::PacketView> derived;
+		store.deliver(make_delivery_packet(), [&](bbb::ViewId view_id) {
+			root_id = view_id;
+			const auto view = store.get_view(view_id);
+			expect(view != nullptr, "delivery supplies a valid root ViewId after prior routes");
+			if (!view) return;
+			packet_id = view->packet->id;
+			packet = view->packet;
+			root = view;
+			expect_equal(view->frame(1).size(), size_t{1024}, "root references the current payload");
+			derived_id = store.create_view(packet_id, 1);
+			derived = store.get_view(derived_id);
+			expect(!derived.expired(), "derived view lives during downstream delivery");
+			const auto second_branch = store.create_view(packet_id, 0);
+			expect(store.get_view(second_branch) != nullptr, "fan-out can create another view");
+			expect(!store.get_view(previous_root), "expired root cannot alias a new packet");
+		});
+		expect(packet.expired(), "delivery releases payload on every iteration");
+		expect(root.expired() && derived.expired(), "delivery releases all views on every iteration");
+		expect(!store.get_packet(packet_id), "delivered packet lookup expires");
+		expect(!store.get_view(root_id) && !store.get_view(derived_id), "delivered handles safely expire");
+		expect_equal(store.create_view(packet_id, 0), bbb::ViewId{0}, "expired packet cannot create a view");
+		previous_root = root_id;
+	}
+
+	std::weak_ptr<const bbb::Packet> outer_packet;
+	std::weak_ptr<const bbb::Packet> inner_packet;
+	bool caught{false};
+	try {
+		store.deliver(make_delivery_packet(), [&](bbb::ViewId outer_id) {
+			outer_packet = store.get_view(outer_id)->packet;
+			store.deliver(make_delivery_packet(), [&](bbb::ViewId inner_id) {
+				inner_packet = store.get_view(inner_id)->packet;
+				expect(store.get_view(outer_id) != nullptr, "nested delivery keeps outer handle valid");
+			});
+			expect(inner_packet.expired(), "nested delivery releases only the inner packet");
+			expect(store.get_view(outer_id) != nullptr, "outer handle survives nested delivery");
+			throw std::runtime_error{"downstream failure"};
+		});
+	} catch (const std::runtime_error &) {
+		caught = true;
+	}
+	expect(caught, "downstream exception is propagated");
+	expect(outer_packet.expired(), "exception path also releases packet and views");
 }
 
 } // namespace
@@ -285,6 +381,8 @@ int main() {
 	test_variable_bytes_and_emit_modifiers();
 	test_parse_errors_are_reported();
 	test_packet_store_and_registry();
+	test_packet_cleanup();
+	test_packet_delivery_lifetime();
 
 	if(failure_count != 0) {
 		std::cerr << failure_count << " test assertion(s) failed\n";
