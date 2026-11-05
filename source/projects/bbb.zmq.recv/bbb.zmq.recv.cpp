@@ -77,7 +77,10 @@ private:
 	std::queue<PendingPacket> pending_;
 	std::mutex pending_mutex_;
 
-	timer<timer_options::deliver_on_scheduler> deliver_ {this, MIN_FUNCTION {
+	// Signalled from recv_loop (a plain std::thread), so this must be a
+	// qelem-based queue. timer::delay() calls clock_fdelay(), which is not safe
+	// to call off the main/scheduler thread.
+	queue<> deliver_ {this, MIN_FUNCTION {
 		std::queue<PendingPacket> to_deliver;
 		{
 			std::lock_guard<std::mutex> lock(pending_mutex_);
@@ -186,7 +189,7 @@ void bbb_zmq_recv::recv_loop() {
 				std::lock_guard<std::mutex> lock(pending_mutex_);
 				pending_.push({id});
 			}
-			deliver_.delay(0);
+			deliver_.set();
 		} catch (const zmq::error_t &e) {
 			if (running_) {
 				std::this_thread::sleep_for(std::chrono::milliseconds(10));
