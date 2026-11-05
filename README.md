@@ -27,6 +27,24 @@ packet 12345
 
 The actual ZMQ message frames live in an internal C++ runtime (`PacketStore`). This allows Max-style patching while keeping binary handling efficient.
 
+### Packet handle lifetime
+
+`packet <view-id>` is valid only during the synchronous outlet call from
+`bbb.zmq.recv`, including downstream routing, parsing, and fan-out. When that
+call returns, the packet and every derived view are released. Expired handles
+are rejected with an error; they never refer to a newer packet.
+
+Do not retain packet handles in `defer`, `deferlow`, `pipe`, message boxes, or
+collections for later use. Parse or copy the payload into ordinary Max data
+before delaying or storing it.
+
+The receiver queues raw packets until main-thread delivery. Its application
+queue holds at most 1024 messages and drops the oldest on overflow, independently
+of ZeroMQ's `@hwm`. A delivery batch can hold another 1024 messages while the
+worker refills the queue. `stop` discards packets still waiting in that queue;
+an already-dispatched batch finishes normally. This bounds retained message
+count, not the size of an individual message.
+
 ## Typical Receive Patch
 
 ```text

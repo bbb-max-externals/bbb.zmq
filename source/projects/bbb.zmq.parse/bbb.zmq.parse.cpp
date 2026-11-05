@@ -122,10 +122,10 @@ public:
 		if (args.size() < 2) return {};
 		if (!(args[0] == "packet")) return {};
 
-		auto view_id = (bbb::ViewId)(int)args[1];
+		auto view_id = static_cast<bbb::ViewId>(static_cast<c74::max::t_atom_long>(args[1]));
 		auto view = bbb::Runtime::instance().packet_store.get_view(view_id);
 		if (!view) {
-			error_out.send("error", "packet_not_found", (int)view_id);
+			error_out.send("error", "packet_not_found", static_cast<c74::max::t_atom_long>(view_id));
 			return {};
 		}
 
@@ -207,7 +207,7 @@ public:
 		}
 
 		for (auto &err : result.errors) {
-			error_out.send("error", (int)view_id, err.message);
+			error_out.send("error", static_cast<c74::max::t_atom_long>(view_id), err.message);
 		}
 
 		return {};

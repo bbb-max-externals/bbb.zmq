@@ -22,14 +22,14 @@ public:
 		if (args.size() < 2) return {};
 		if (!(args[0] == "packet")) return {};
 
-		auto view_id = (bbb::ViewId)(int)args[1];
+		auto view_id = static_cast<bbb::ViewId>(static_cast<c74::max::t_atom_long>(args[1]));
 		auto view = bbb::Runtime::instance().packet_store.get_view(view_id);
 		if (!view) {
-			output.send("peek", "view_not_found", (int)view_id);
+			output.send("peek", "view_not_found", static_cast<c74::max::t_atom_long>(view_id));
 			return {};
 		}
 
-		output.send("peek", "view_id", (int)view_id, "packet_id", (int)view->packet->id, "start_frame", (int)view->start_frame, "frames", (int)view->frame_count());
+		output.send("peek", "view_id", static_cast<c74::max::t_atom_long>(view_id), "packet_id", static_cast<c74::max::t_atom_long>(view->packet->id), "start_frame", (int)view->start_frame, "frames", (int)view->frame_count());
 
 		if (verbose.get() >= 1) {
 			for (size_t i = 0; i < view->frame_count(); ++i) {

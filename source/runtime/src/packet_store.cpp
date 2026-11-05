@@ -23,13 +23,18 @@ PacketId PacketStore::store(Packet packet) {
 	auto ptr = std::make_shared<Packet>(std::move(packet));
 	packets_[id] = ptr;
 
-	auto vid = next_view_id_.fetch_add(1);
-	auto view = std::make_shared<PacketView>();
-	view->id = vid;
-	view->packet = ptr;
-	view->start_frame = 0;
-	views_[vid] = view;
 	return id;
+}
+
+void PacketStore::deliver(Packet packet, const std::function<void(ViewId)> &send) {
+	const auto packet_id = store(std::move(packet));
+	try {
+		send(create_view(packet_id, 0));
+	} catch (...) {
+		release_packet(packet_id);
+		throw;
+	}
+	release_packet(packet_id);
 }
 
 std::shared_ptr<const PacketView> PacketStore::get_view(ViewId id) const {
@@ -67,12 +72,26 @@ ViewId PacketStore::create_view(PacketId packet_id, size_t start_frame) {
 
 void PacketStore::release_packet(PacketId id) {
 	std::lock_guard<std::mutex> lock(mutex_);
+	for (auto it = views_.begin(); it != views_.end();) {
+		if (it->second->packet->id == id) {
+			it = views_.erase(it);
+		} else {
+			++it;
+		}
+	}
 	packets_.erase(id);
 }
 
 void PacketStore::cleanup(double max_age_seconds) {
 	std::lock_guard<std::mutex> lock(mutex_);
 	double cutoff = now_epoch_seconds() - max_age_seconds;
+	for (auto it = views_.begin(); it != views_.end();) {
+		if (it->second->packet->received_time < cutoff) {
+			it = views_.erase(it);
+		} else {
+			++it;
+		}
+	}
 	for (auto it = packets_.begin(); it != packets_.end();) {
 		if (it->second->received_time < cutoff) {
 			it = packets_.erase(it);
