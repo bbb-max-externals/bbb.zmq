@@ -35,23 +35,48 @@ static c74::max::t_jit_object *create_jit_matrix(c74::max::t_symbol *name, bbb::
 }
 
 static void copy_matrix_data(c74::max::t_jit_object *mtx, const bbb::MatrixData &md) {
-	c74::max::t_jit_object *info = (c74::max::t_jit_object *)c74::max::jit_object_method(mtx, c74::max::_jit_sym_getinfo);
-	if (!info) return;
+	// Lock the matrix for the duration of the info/data access and restore the
+	// previous lock state via RAII (mirrors bbb.zmq.send::extract_matrix_frame).
+	const auto saved_lock = reinterpret_cast<c74::max::t_atom_long>(
+		c74::max::jit_object_method(mtx, c74::max::_jit_sym_lock, 1L));
+	struct matrix_unlock {
+		c74::max::t_jit_object *matrix;
+		c74::max::t_atom_long saved_lock;
+		~matrix_unlock() {
+			c74::max::jit_object_method(matrix, c74::max::_jit_sym_lock, saved_lock);
+		}
+	} unlock{mtx, saved_lock};
 
-	long dimstride[2] = {0, 0};
-	c74::max::jit_object_method(info, c74::max::_jit_sym_getinfo, c74::max::gensym("dimstride"), dimstride, 0L, 0L);
+	// _jit_sym_getinfo fills a t_jit_matrix_info output argument; its return
+	// value is a t_jit_err, not an object. The previous cast-to-object read
+	// garbage and, on success (err 0), yielded NULL -> early return -> the
+	// created matrix was never populated (all-zero output); dimstride stayed 0.
+	c74::max::t_jit_matrix_info info{};
+	c74::max::jit_object_method(mtx, c74::max::_jit_sym_getinfo, &info);
+	if (info.dimcount < 1 || 2 < info.dimcount || info.dim[0] < 1 || info.planecount < 1) return;
 
 	char *bp = nullptr;
 	c74::max::jit_object_method(mtx, c74::max::_jit_sym_getdata, &bp);
 	if (!bp) return;
 
-	size_t cell_sz = bbb::primitive_size(md.celltype);
-	size_t row_src = (size_t)(md.planes * md.dim1) * cell_sz;
+	const long rows = info.dimcount == 1 ? 1 : info.dim[1];
+	if (rows < 1) return;
 
-	for (long y = 0; y < (long)md.dim2; ++y) {
-		const uint8_t *src = md.data.data() + y * row_src;
-		char *dst = bp + y * dimstride[1];
-		std::memcpy(dst, src, row_src);
+	size_t dst_cell = 1;
+	if (info.type == c74::max::_jit_sym_long || info.type == c74::max::_jit_sym_float32) dst_cell = 4;
+	else if (info.type == c74::max::_jit_sym_float64) dst_cell = 8;
+
+	const size_t cell_sz = bbb::primitive_size(md.celltype);
+	const size_t row_src = static_cast<size_t>(md.planes * md.dim1) * cell_sz;
+	const size_t row_dst = static_cast<size_t>(info.dim[0]) * static_cast<size_t>(info.planecount) * dst_cell;
+	// Never write past a destination row even if the source/matrix dims disagree.
+	const size_t row_bytes = row_src < row_dst ? row_src : row_dst;
+	const long copy_rows = rows < static_cast<long>(md.dim2) ? rows : static_cast<long>(md.dim2);
+
+	for (long y = 0; y < copy_rows; ++y) {
+		const uint8_t *src = md.data.data() + static_cast<size_t>(y) * row_src;
+		char *dst = bp + static_cast<size_t>(y) * static_cast<size_t>(info.dimstride[1]);
+		std::memcpy(dst, src, row_bytes);
 	}
 }
 
