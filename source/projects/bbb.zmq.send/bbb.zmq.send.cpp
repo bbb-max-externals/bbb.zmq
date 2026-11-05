@@ -7,6 +7,7 @@
 #include <queue>
 #include <cstring>
 #include "bbb/runtime.hpp"
+#include "bbb/send_message.hpp"
 
 using namespace c74::min;
 
@@ -140,6 +141,11 @@ private:
 
 	std::vector<bbb::Frame> frame_buffer_;
 	std::mutex frame_buffer_mutex_;
+
+	queue<> send_failed_ {this, MIN_FUNCTION {
+		cerr << "bbb.zmq.send: send failed; use stop then start to restart the socket" << endl;
+		return {};
+	}};
 };
 
 bbb_zmq_send::bbb_zmq_send(const atoms &args) {
@@ -170,6 +176,8 @@ void bbb_zmq_send::start() {
 
 		socket_ = std::make_unique<zmq::socket_t>(*context_, ztype);
 		socket_->set(zmq::sockopt::sndhwm, hwm.get());
+		// Closing must not wait indefinitely for an absent/blocked peer.
+		socket_->set(zmq::sockopt::linger, 0);
 
 		auto ep = std::string(endpoint.get().c_str());
 		if (bind_mode.get()) {
@@ -186,8 +194,17 @@ void bbb_zmq_send::start() {
 }
 
 void bbb_zmq_send::stop() {
-	running_ = false;
+	{
+		// Use the waiter's mutex so shutdown cannot lose its wakeup.
+		std::lock_guard<std::mutex> lock(outgoing_mutex_);
+		running_ = false;
+		std::queue<OutgoingMessage> empty;
+		outgoing_.swap(empty);
+	}
 	outgoing_cv_.notify_all();
+	// Context shutdown is thread-safe and interrupts blocking send with ETERM.
+	// Do not close the socket from this thread while the worker is using it.
+	if (context_) context_->shutdown();
 	if (thread_ && thread_->joinable()) {
 		thread_->join();
 	}
@@ -206,19 +223,18 @@ void bbb_zmq_send::send_loop() {
 			});
 			std::swap(local, outgoing_);
 		}
-		while (!local.empty()) {
+		while (running_ && !local.empty()) {
 			auto &msg = local.front();
 			try {
-				for (size_t i = 0; i < msg.frames.size(); ++i) {
-					auto &frame = msg.frames[i];
-					zmq::message_t zmsg(frame.size());
-					std::memcpy(zmsg.data(), frame.data(), frame.size());
-					auto flags = (i < msg.frames.size() - 1)
-						? zmq::send_flags::sndmore
-						: zmq::send_flags::none;
-					socket_->send(zmsg, flags);
+				if (!bbb::send_message(*socket_, msg.frames, running_)) {
+					if (running_) send_failed_.set();
+					return;
 				}
 			} catch (const zmq::error_t &) {
+				// Never append another message to a possibly incomplete multipart.
+				// stop/start closes this socket and creates a fresh context.
+				if (running_) send_failed_.set();
+				return;
 			}
 			local.pop();
 		}
@@ -256,35 +272,37 @@ bbb::Frame bbb_zmq_send::encode_atoms(const atoms &args) {
 bbb::Frame bbb_zmq_send::extract_matrix_frame(c74::max::t_jit_object *mtx) {
 	bbb::Frame out;
 
-	c74::max::t_jit_object *info = (c74::max::t_jit_object *)c74::max::jit_object_method(mtx, c74::max::_jit_sym_getinfo);
-	if (!info) return out;
+	const auto saved_lock = reinterpret_cast<c74::max::t_atom_long>(
+		c74::max::jit_object_method(mtx, c74::max::_jit_sym_lock, 1L));
+	struct matrix_unlock {
+		c74::max::t_jit_object *matrix;
+		c74::max::t_atom_long saved_lock;
+		~matrix_unlock() {
+			c74::max::jit_object_method(matrix, c74::max::_jit_sym_lock, saved_lock);
+		}
+	} unlock{mtx, saved_lock};
 
-	long dim[2] = {0, 0};
-	c74::max::jit_object_method(info, c74::max::_jit_sym_getinfo, c74::max::_jit_sym_dim, dim, 0L, 0L);
-
-	long dimstride[2] = {0, 0};
-	c74::max::jit_object_method(info, c74::max::_jit_sym_getinfo, c74::max::gensym("dimstride"), dimstride, 0L, 0L);
-
-	long planecount = 1;
-	c74::max::jit_object_method(info, c74::max::_jit_sym_getinfo, c74::max::_jit_sym_planecount, &planecount, 0L, 0L);
-
-	c74::max::t_symbol *type_sym = c74::max::_jit_sym_char;
-	c74::max::jit_object_method(info, c74::max::_jit_sym_getinfo, c74::max::_jit_sym_type, &type_sym, 0L, 0L);
+	c74::max::t_jit_matrix_info info{};
+	c74::max::jit_object_method(mtx, c74::max::_jit_sym_getinfo, &info);
+	if (info.dimcount < 1 || 2 < info.dimcount || info.dim[0] < 1 || info.planecount < 1) return out;
+	const long rows = info.dimcount == 1 ? 1 : info.dim[1];
+	if (rows < 1) return out;
 
 	size_t cell_sz = 1;
-	if (type_sym == c74::max::_jit_sym_long) cell_sz = 4;
-	else if (type_sym == c74::max::_jit_sym_float32) cell_sz = 4;
-	else if (type_sym == c74::max::_jit_sym_float64) cell_sz = 8;
+	if (info.type == c74::max::_jit_sym_long) cell_sz = 4;
+	else if (info.type == c74::max::_jit_sym_float32) cell_sz = 4;
+	else if (info.type == c74::max::_jit_sym_float64) cell_sz = 8;
+	else if (info.type != c74::max::_jit_sym_char) return out;
 
 	char *bp = nullptr;
 	c74::max::jit_object_method(mtx, c74::max::_jit_sym_getdata, &bp);
 	if (!bp) return out;
 
-	size_t row_bytes = (size_t)(dim[0] * planecount) * cell_sz;
-	out.reserve(row_bytes * dim[1]);
+	size_t row_bytes = static_cast<size_t>(info.dim[0]) * static_cast<size_t>(info.planecount) * cell_sz;
+	out.reserve(row_bytes * static_cast<size_t>(rows));
 
-	for (long y = 0; y < dim[1]; ++y) {
-		char *row = bp + y * dimstride[1];
+	for (long y = 0; y < rows; ++y) {
+		char *row = bp + y * info.dimstride[1];
 		out.insert(out.end(), row, row + row_bytes);
 	}
 

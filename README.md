@@ -173,6 +173,13 @@ Downstream objects still see the routing key at frame[0].
 | `frame_bytes <ints>` | Add raw byte frame (each int 0-255) to buffer |
 | `flush` | Send buffered frames as multipart, clear buffer |
 
+`stop` and patch close cancel pending transmission: they interrupt blocked
+socket sends and discard queued, unsent messages (`ZMQ_LINGER=0`). They do not
+guarantee delivery of already-enqueued data. A later `start` uses a fresh socket
+and context. Unexpected send errors stop the worker and report a Max-console
+error; use `stop` then `start` to recover without reusing a partial multipart
+message.
+
 Multipart example:
 
 ```text

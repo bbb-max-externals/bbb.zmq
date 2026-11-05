@@ -77,6 +77,20 @@ if(BBB_ZMQ_BUILD_TESTS)
 	)
 	target_compile_features(bbb_zmq_runtime_tests PRIVATE cxx_std_17)
 	add_test(NAME bbb_zmq_runtime_tests COMMAND bbb_zmq_runtime_tests)
+
+	add_executable(bbb_zmq_send_shutdown_tests tests/send_shutdown_tests.cpp)
+	find_package(Threads REQUIRED)
+	target_include_directories(bbb_zmq_send_shutdown_tests PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}/source/runtime/include
+		${CMAKE_CURRENT_SOURCE_DIR}/extern/cppzmq
+		${CMAKE_CURRENT_SOURCE_DIR}/extern/libzmq/include
+	)
+	target_link_libraries(bbb_zmq_send_shutdown_tests PRIVATE libzmq-static Threads::Threads)
+	if(WIN32)
+		target_compile_definitions(bbb_zmq_send_shutdown_tests PRIVATE ZMQ_STATIC)
+	endif()
+	add_test(NAME bbb_zmq_send_shutdown_tests COMMAND bbb_zmq_send_shutdown_tests)
+	set_tests_properties(bbb_zmq_send_shutdown_tests PROPERTIES TIMEOUT 15)
 endif()
 
 set(CMAKE_SUPPRESS_REGENERATION true)
