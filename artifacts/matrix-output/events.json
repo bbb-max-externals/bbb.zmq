@@ -1,0 +1,838 @@
+{
+  "one-d": [
+    {
+      "time": "2026-11-06T06:29:31.008Z",
+      "kind": "started",
+      "value": "one-d"
+    },
+    {
+      "time": "2026-11-06T06:29:31.091Z",
+      "kind": "observer_control_metadata",
+      "value": {
+        "name": "u077000559",
+        "dim": [
+          3,
+          2
+        ],
+        "planecount": 1,
+        "type": "char",
+        "dimstride": [
+          1,
+          16
+        ],
+        "size": 32
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:31.092Z",
+      "kind": "observer_control_data",
+      "value": [
+        11,
+        22,
+        33,
+        44,
+        55,
+        66
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:31.092Z",
+      "kind": "schema_status",
+      "value": [
+        "compiled",
+        "qa_matrix_one_d"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:31.092Z",
+      "kind": "schema_status",
+      "value": [
+        "schema",
+        "qa_matrix_one_d",
+        "fields",
+        3,
+        "emits",
+        4
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:31.092Z",
+      "kind": "diagnostic",
+      "value": [
+        "error",
+        "packet_not_found",
+        2147483646
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:31.093Z",
+      "kind": "ready",
+      "value": 59481
+    },
+    {
+      "time": "2026-11-06T06:29:31.508Z",
+      "kind": "command",
+      "value": {
+        "id": 1,
+        "action": "mark",
+        "label": "truncated"
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:31.932Z",
+      "kind": "received",
+      "value": [
+        "packet",
+        1
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:31.933Z",
+      "kind": "diagnostic",
+      "value": [
+        "error",
+        1,
+        "out of bounds at offset 2 need 5 have 1"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:32.258Z",
+      "kind": "command",
+      "value": {
+        "id": 2,
+        "action": "mark",
+        "label": "zero-width"
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:32.364Z",
+      "kind": "received",
+      "value": [
+        "packet",
+        2
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:32.365Z",
+      "kind": "diagnostic",
+      "value": [
+        "error",
+        2,
+        "matrix dims must be > 0 for field 'pixels'"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:32.508Z",
+      "kind": "command",
+      "value": {
+        "id": 3,
+        "action": "mark",
+        "label": "valid"
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:32.582Z",
+      "kind": "received",
+      "value": [
+        "packet",
+        3
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:32.583Z",
+      "kind": "parsed",
+      "value": [
+        "image"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:32.583Z",
+      "kind": "parsed",
+      "value": [
+        "jit_matrix",
+        "bbb.zmq.parse.40235766096.image"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:32.584Z",
+      "kind": "parsed_matrix_metadata",
+      "value": {
+        "name": "bbb.zmq.parse.40235766096.image",
+        "dim": [
+          5,
+          1
+        ],
+        "planecount": 1,
+        "type": "char",
+        "dimstride": [
+          1,
+          16
+        ],
+        "size": 16
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:32.584Z",
+      "kind": "parsed_matrix_data",
+      "value": [
+        11,
+        22,
+        33,
+        44,
+        55
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:32.758Z",
+      "kind": "command",
+      "value": {
+        "id": 4,
+        "action": "stop"
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:32.759Z",
+      "kind": "stopped",
+      "value": true
+    },
+    {
+      "time": "2026-11-06T06:29:32.767Z",
+      "kind": "patch_deleted",
+      "value": true
+    }
+  ],
+  "two-d": [
+    {
+      "time": "2026-11-06T06:29:36.949Z",
+      "kind": "started",
+      "value": "two-d"
+    },
+    {
+      "time": "2026-11-06T06:29:37.018Z",
+      "kind": "observer_control_metadata",
+      "value": {
+        "name": "u142000575",
+        "dim": [
+          3,
+          2
+        ],
+        "planecount": 1,
+        "type": "char",
+        "dimstride": [
+          1,
+          16
+        ],
+        "size": 32
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:37.018Z",
+      "kind": "observer_control_data",
+      "value": [
+        11,
+        22,
+        33,
+        44,
+        55,
+        66
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:37.019Z",
+      "kind": "schema_status",
+      "value": [
+        "compiled",
+        "qa_matrix_two_d"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:37.019Z",
+      "kind": "schema_status",
+      "value": [
+        "schema",
+        "qa_matrix_two_d",
+        "fields",
+        3,
+        "emits",
+        4
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:37.019Z",
+      "kind": "diagnostic",
+      "value": [
+        "error",
+        "packet_not_found",
+        2147483646
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:37.019Z",
+      "kind": "ready",
+      "value": 59482
+    },
+    {
+      "time": "2026-11-06T06:29:37.200Z",
+      "kind": "command",
+      "value": {
+        "id": 1,
+        "action": "mark",
+        "label": "truncated"
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:37.299Z",
+      "kind": "received",
+      "value": [
+        "packet",
+        1
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:37.300Z",
+      "kind": "diagnostic",
+      "value": [
+        "error",
+        1,
+        "out of bounds at offset 2 need 18 have 1"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:37.450Z",
+      "kind": "command",
+      "value": {
+        "id": 2,
+        "action": "mark",
+        "label": "zero-width"
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:37.518Z",
+      "kind": "received",
+      "value": [
+        "packet",
+        2
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:37.519Z",
+      "kind": "diagnostic",
+      "value": [
+        "error",
+        2,
+        "matrix dims must be > 0 for field 'pixels'"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:37.700Z",
+      "kind": "command",
+      "value": {
+        "id": 3,
+        "action": "mark",
+        "label": "valid"
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:37.739Z",
+      "kind": "received",
+      "value": [
+        "packet",
+        3
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:37.740Z",
+      "kind": "parsed",
+      "value": [
+        "image"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:37.741Z",
+      "kind": "parsed",
+      "value": [
+        "jit_matrix",
+        "bbb.zmq.parse.39561527632.image"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:37.741Z",
+      "kind": "parsed_matrix_metadata",
+      "value": {
+        "name": "bbb.zmq.parse.39561527632.image",
+        "dim": [
+          3,
+          2
+        ],
+        "planecount": 3,
+        "type": "char",
+        "dimstride": [
+          3,
+          16
+        ],
+        "size": 32
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:37.742Z",
+      "kind": "parsed_matrix_data",
+      "value": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:37.950Z",
+      "kind": "command",
+      "value": {
+        "id": 4,
+        "action": "mark",
+        "label": "grow"
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:37.961Z",
+      "kind": "received",
+      "value": [
+        "packet",
+        4
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:37.962Z",
+      "kind": "parsed",
+      "value": [
+        "image"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:37.963Z",
+      "kind": "parsed",
+      "value": [
+        "jit_matrix",
+        "bbb.zmq.parse.39561527632.image"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:37.964Z",
+      "kind": "parsed_matrix_metadata",
+      "value": {
+        "name": "bbb.zmq.parse.39561527632.image",
+        "dim": [
+          5,
+          3
+        ],
+        "planecount": 3,
+        "type": "char",
+        "dimstride": [
+          3,
+          16
+        ],
+        "size": 48
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:37.964Z",
+      "kind": "parsed_matrix_data",
+      "value": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:38.200Z",
+      "kind": "command",
+      "value": {
+        "id": 5,
+        "action": "mark",
+        "label": "shrink"
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:38.285Z",
+      "kind": "received",
+      "value": [
+        "packet",
+        5
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:38.286Z",
+      "kind": "parsed",
+      "value": [
+        "image"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:38.287Z",
+      "kind": "parsed",
+      "value": [
+        "jit_matrix",
+        "bbb.zmq.parse.39561527632.image"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:38.288Z",
+      "kind": "parsed_matrix_metadata",
+      "value": {
+        "name": "bbb.zmq.parse.39561527632.image",
+        "dim": [
+          2,
+          1
+        ],
+        "planecount": 3,
+        "type": "char",
+        "dimstride": [
+          3,
+          16
+        ],
+        "size": 16
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:38.288Z",
+      "kind": "parsed_matrix_data",
+      "value": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:38.450Z",
+      "kind": "command",
+      "value": {
+        "id": 6,
+        "action": "schema",
+        "file": "float.zmqdsl"
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:38.451Z",
+      "kind": "schema_status",
+      "value": [
+        "compiled",
+        "qa_matrix_two_d"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:38.452Z",
+      "kind": "schema_status",
+      "value": [
+        "schema",
+        "qa_matrix_two_d",
+        "fields",
+        3,
+        "emits",
+        4
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:38.700Z",
+      "kind": "command",
+      "value": {
+        "id": 7,
+        "action": "mark",
+        "label": "float-type-change"
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:38.717Z",
+      "kind": "received",
+      "value": [
+        "packet",
+        6
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:38.718Z",
+      "kind": "parsed",
+      "value": [
+        "image"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:38.718Z",
+      "kind": "parsed",
+      "value": [
+        "jit_matrix",
+        "bbb.zmq.parse.39561527632.image"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:38.719Z",
+      "kind": "parsed_matrix_metadata",
+      "value": {
+        "name": "bbb.zmq.parse.39561527632.image",
+        "dim": [
+          3,
+          2
+        ],
+        "planecount": 1,
+        "type": "float32",
+        "dimstride": [
+          4,
+          16
+        ],
+        "size": 32
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:38.720Z",
+      "kind": "parsed_matrix_data",
+      "value": [
+        1.25,
+        -2.5,
+        3.75,
+        4.5,
+        5.25,
+        6
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:38.950Z",
+      "kind": "command",
+      "value": {
+        "id": 8,
+        "action": "schema",
+        "file": "unsupported.zmqdsl"
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:38.951Z",
+      "kind": "schema_status",
+      "value": [
+        "compiled",
+        "qa_matrix_two_d"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:38.952Z",
+      "kind": "schema_status",
+      "value": [
+        "schema",
+        "qa_matrix_two_d",
+        "fields",
+        3,
+        "emits",
+        4
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:39.200Z",
+      "kind": "command",
+      "value": {
+        "id": 9,
+        "action": "mark",
+        "label": "unsupported-integer-width"
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:39.248Z",
+      "kind": "received",
+      "value": [
+        "packet",
+        7
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:39.249Z",
+      "kind": "parsed",
+      "value": [
+        "image"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:39.250Z",
+      "kind": "diagnostic",
+      "value": [
+        "error",
+        "matrix_invalid_layout",
+        "image"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:39.450Z",
+      "kind": "command",
+      "value": {
+        "id": 10,
+        "action": "schema",
+        "file": "schema.zmqdsl"
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:39.451Z",
+      "kind": "schema_status",
+      "value": [
+        "compiled",
+        "qa_matrix_two_d"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:39.452Z",
+      "kind": "schema_status",
+      "value": [
+        "schema",
+        "qa_matrix_two_d",
+        "fields",
+        3,
+        "emits",
+        4
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:39.700Z",
+      "kind": "command",
+      "value": {
+        "id": 11,
+        "action": "mark",
+        "label": "recover-char"
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:39.786Z",
+      "kind": "received",
+      "value": [
+        "packet",
+        8
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:39.787Z",
+      "kind": "parsed",
+      "value": [
+        "image"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:39.788Z",
+      "kind": "parsed",
+      "value": [
+        "jit_matrix",
+        "bbb.zmq.parse.39561527632.image"
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:39.789Z",
+      "kind": "parsed_matrix_metadata",
+      "value": {
+        "name": "bbb.zmq.parse.39561527632.image",
+        "dim": [
+          3,
+          2
+        ],
+        "planecount": 3,
+        "type": "char",
+        "dimstride": [
+          3,
+          16
+        ],
+        "size": 32
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:39.790Z",
+      "kind": "parsed_matrix_data",
+      "value": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ]
+    },
+    {
+      "time": "2026-11-06T06:29:39.950Z",
+      "kind": "command",
+      "value": {
+        "id": 12,
+        "action": "stop"
+      }
+    },
+    {
+      "time": "2026-11-06T06:29:39.953Z",
+      "kind": "stopped",
+      "value": true
+    },
+    {
+      "time": "2026-11-06T06:29:39.974Z",
+      "kind": "patch_deleted",
+      "value": true
+    }
+  ]
+}

@@ -4,55 +4,95 @@
 #include <sstream>
 #include <unordered_map>
 #include <cstring>
+#include <limits>
 
 using namespace c74::min;
 
-static c74::max::t_symbol *ps_jit_matrix = nullptr;
-
-static c74::max::t_jit_object *create_jit_matrix(c74::max::t_symbol *name, bbb::PrimitiveType celltype,
-	int64_t planes, int64_t dim1, int64_t dim2)
+// MatrixData contains packed bytes. Only native-width Jitter types can be
+// copied verbatim; 16/64-bit integers need a conversion, not a truncated copy.
+static bool matrix_info_for_data(const bbb::MatrixData &md,
+	c74::max::t_jit_matrix_info &info, size_t &row_bytes)
 {
-	c74::max::t_symbol *type_sym = c74::max::_jit_sym_char;
-	switch (celltype) {
-	case bbb::PrimitiveType::I16: case bbb::PrimitiveType::U16:
+	c74::max::jit_matrix_info_default(&info);
+	switch (md.celltype) {
+	case bbb::PrimitiveType::U8: case bbb::PrimitiveType::I8:
+		info.type = c74::max::_jit_sym_char; break;
 	case bbb::PrimitiveType::I32: case bbb::PrimitiveType::U32:
-		type_sym = c74::max::_jit_sym_long; break;
+		info.type = c74::max::_jit_sym_long; break;
 	case bbb::PrimitiveType::F32:
-		type_sym = c74::max::_jit_sym_float32; break;
+		info.type = c74::max::_jit_sym_float32; break;
 	case bbb::PrimitiveType::F64:
-		type_sym = c74::max::_jit_sym_float64; break;
-	default: break;
+		info.type = c74::max::_jit_sym_float64; break;
+	default: return false;
 	}
 
-	c74::max::t_jit_object *mtx = (c74::max::t_jit_object *)c74::max::jit_object_new(
-		c74::max::_jit_sym_jit_matrix, type_sym, (long)planes, (long)dim1, (long)dim2);
-	if (!mtx) return nullptr;
+	if (md.planes < 1 || md.planes > c74::max::JIT_MATRIX_MAX_PLANECOUNT ||
+		md.dim1 < 1 || md.dim2 < 1 ||
+		md.dim1 > std::numeric_limits<long>::max() || md.dim2 > std::numeric_limits<long>::max()) return false;
 
-	if (name && name != c74::max::gensym("")) {
-		c74::max::jit_object_register(mtx, name);
-	}
+	const size_t cell_bytes = static_cast<size_t>(md.planes) * bbb::primitive_size(md.celltype);
+	// Division checks avoid overflowing the dimensions before checking the source.
+	if (static_cast<uint64_t>(md.dim1) > md.data.size() / cell_bytes) return false;
+	row_bytes = static_cast<size_t>(md.dim1) * cell_bytes;
+	if (static_cast<uint64_t>(md.dim2) > md.data.size() / row_bytes) return false;
+
+	info.planecount = static_cast<long>(md.planes);
+	// The DSL has two dimensions, including N x 1 for a single row.
+	info.dimcount = 2;
+	info.dim[0] = static_cast<long>(md.dim1);
+	info.dim[1] = static_cast<long>(md.dim2);
+	return true;
+}
+
+static c74::max::t_jit_object *create_jit_matrix(c74::max::t_symbol *name,
+	c74::max::t_jit_matrix_info &info)
+{
+	auto *mtx = static_cast<c74::max::t_jit_object *>(
+		c74::max::jit_object_new(c74::max::_jit_sym_jit_matrix, &info));
+	if (mtx) c74::max::jit_object_register(mtx, name);
 	return mtx;
 }
 
-static void copy_matrix_data(c74::max::t_jit_object *mtx, const bbb::MatrixData &md) {
-	c74::max::t_jit_object *info = (c74::max::t_jit_object *)c74::max::jit_object_method(mtx, c74::max::_jit_sym_getinfo);
-	if (!info) return;
+static bool copy_matrix_data(c74::max::t_jit_object *mtx, const bbb::MatrixData &md,
+	c74::max::t_jit_matrix_info requested, size_t row_bytes)
+{
+	const auto saved_lock = reinterpret_cast<c74::max::t_atom_long>(
+		c74::max::jit_object_method(mtx, c74::max::_jit_sym_lock, 1L));
+	struct matrix_unlock {
+		c74::max::t_jit_object *matrix;
+		c74::max::t_atom_long saved_lock;
+		~matrix_unlock() {
+			c74::max::jit_object_method(matrix, c74::max::_jit_sym_lock, saved_lock);
+		}
+	} unlock{mtx, saved_lock};
 
-	long dimstride[2] = {0, 0};
-	c74::max::jit_object_method(info, c74::max::_jit_sym_getinfo, c74::max::gensym("dimstride"), dimstride, 0L, 0L);
+	c74::max::t_jit_matrix_info info{};
+	if (c74::max::jit_object_method(mtx, c74::max::_jit_sym_getinfo, &info)) return false;
+	const auto matches = [&]() {
+		return info.type == requested.type && info.planecount == requested.planecount &&
+			info.dimcount == requested.dimcount && info.dim[0] == requested.dim[0] &&
+			info.dim[1] == requested.dim[1];
+	};
+	// A cached selector can receive new dimensions or a recompiled schema.
+	if (!matches()) {
+		if (c74::max::jit_object_method(mtx, c74::max::_jit_sym_setinfo, &requested) ||
+			c74::max::jit_object_method(mtx, c74::max::_jit_sym_getinfo, &info) || !matches()) return false;
+	}
+
+	const size_t cell_bytes = static_cast<size_t>(md.planes) * bbb::primitive_size(md.celltype);
+	if (info.dimstride[0] != static_cast<long>(cell_bytes) || info.dimstride[1] <= 0 || info.size <= 0) return false;
+	const size_t stride = static_cast<size_t>(info.dimstride[1]);
+	const size_t size = static_cast<size_t>(info.size);
+	const size_t rows = static_cast<size_t>(info.dim[1]);
+	// Check the last row against the real allocation before writing any row.
+	if (row_bytes > stride || row_bytes > size || rows - 1 > (size - row_bytes) / stride) return false;
 
 	char *bp = nullptr;
-	c74::max::jit_object_method(mtx, c74::max::_jit_sym_getdata, &bp);
-	if (!bp) return;
-
-	size_t cell_sz = bbb::primitive_size(md.celltype);
-	size_t row_src = (size_t)(md.planes * md.dim1) * cell_sz;
-
-	for (long y = 0; y < (long)md.dim2; ++y) {
-		const uint8_t *src = md.data.data() + y * row_src;
-		char *dst = bp + y * dimstride[1];
-		std::memcpy(dst, src, row_src);
+	if (c74::max::jit_object_method(mtx, c74::max::_jit_sym_getdata, &bp) || !bp) return false;
+	for (size_t y = 0; y < rows; ++y) {
+		std::memcpy(bp + y * stride, md.data.data() + y * row_bytes, row_bytes);
 	}
+	return true;
 }
 
 class bbb_zmq_parse : public object<bbb_zmq_parse> {
@@ -94,7 +134,6 @@ public:
 	std::unordered_map<std::string, c74::max::t_jit_object *> cached_matrices_;
 
 	bbb_zmq_parse(const atoms &args = {}) {
-		if (!ps_jit_matrix) ps_jit_matrix = c74::max::gensym("jit_matrix");
 		for (auto &arg : args) {
 			if (arg.a_type == c74::max::A_SYM) {
 				auto s = (std::string)arg;
@@ -181,6 +220,12 @@ public:
 			for (auto &atom : out.atoms) {
 				if (!std::holds_alternative<bbb::MatrixData>(atom)) continue;
 				auto &md = std::get<bbb::MatrixData>(atom);
+				c74::max::t_jit_matrix_info requested{};
+				size_t row_bytes = 0;
+				if (!matrix_info_for_data(md, requested, row_bytes)) {
+					error_out.send("error", "matrix_invalid_layout", out.selector);
+					continue;
+				}
 
 				std::string reg_key = "bbb.zmq.parse." + std::to_string((uintptr_t)this) + "." + out.selector;
 				auto it = cached_matrices_.find(reg_key);
@@ -190,19 +235,21 @@ public:
 					mtx = it->second;
 				} else {
 					c74::max::t_symbol *sym = c74::max::gensym(reg_key.c_str());
-					mtx = create_jit_matrix(sym, md.celltype, md.planes, md.dim1, md.dim2);
+					mtx = create_jit_matrix(sym, requested);
 					if (mtx) {
 						cached_matrices_[reg_key] = mtx;
 					}
 				}
 
-				if (!mtx) continue;
-				copy_matrix_data(mtx, md);
-
-				c74::max::t_symbol *reg_name = c74::max::gensym(reg_key.c_str());
-				c74::max::t_atom a_mat;
-				c74::max::atom_setsym(&a_mat, reg_name);
-				c74::max::outlet_anything(maxobj(), ps_jit_matrix, 1, &a_mat);
+				if (!mtx) {
+					error_out.send("error", "matrix_create_failed", out.selector);
+					continue;
+				}
+				if (!copy_matrix_data(mtx, md, requested, row_bytes)) {
+					error_out.send("error", "matrix_copy_failed", out.selector);
+					continue;
+				}
+				output.send(symbol("jit_matrix"), symbol(reg_key));
 			}
 		}
 
