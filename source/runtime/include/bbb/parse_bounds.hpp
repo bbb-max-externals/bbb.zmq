@@ -18,11 +18,11 @@ inline bool multiply(std::size_t bytes, std::int64_t count, std::size_t &result)
 }
 
 inline bool matrix_bytes(std::size_t cell, std::int64_t planes, std::int64_t width,
-	std::int64_t height, std::uint64_t budget, std::size_t &bytes) {
+	std::int64_t height, std::size_t &bytes) {
 	std::size_t total = cell;
 	if (!cell || planes <= 0 || width <= 0 || height <= 0 ||
 		!multiply(total, planes, total) || !multiply(total, width, total) ||
-		!multiply(total, height, total) || total > budget) return false;
+		!multiply(total, height, total)) return false;
 	bytes = total;
 	return true;
 }

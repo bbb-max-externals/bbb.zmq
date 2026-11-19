@@ -237,10 +237,6 @@ struct ParseContext {
 	void read_remaining_bytes(const std::string &name) {
 		if (!check_bounds(0)) return;
 		size_t remaining = frame.size() - offset;
-		if (remaining > maxbytes) {
-			reject_size(name);
-			return;
-		}
 		FieldValue fv;
 		fv.kind = FieldValue::Bytes_;
 		if (remaining) fv.bytes_value.assign(frame.data() + offset, frame.data() + frame.size());
@@ -361,7 +357,7 @@ struct ParseContext {
 		if (failed) return;
 
 		size_t total;
-		if (!parse_bounds::matrix_bytes(primitive_size(pt), planes, d1, d2, maxbytes, total)) {
+		if (!parse_bounds::matrix_bytes(primitive_size(pt), planes, d1, d2, total)) {
 			reject_size(name);
 			return;
 		}
