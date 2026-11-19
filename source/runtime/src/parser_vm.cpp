@@ -1,4 +1,5 @@
 #include "bbb/parser_vm.hpp"
+#include "bbb/parse_bounds.hpp"
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
@@ -36,7 +37,7 @@ static bool is_valid_utf8(const uint8_t *data, size_t len) {
 		} else {
 			return false;
 		}
-		if (i + seq_len > len) return false;
+		if (seq_len > len - i) return false;
 		for (size_t j = 1; j < seq_len; ++j) {
 			if ((data[i + j] & 0xC0) != 0x80) return false;
 		}
@@ -73,11 +74,16 @@ struct ParseContext {
 	ParseContext(const CompiledSchema &s, const Frame &f, uint64_t mb, uint64_t ma)
 		: schema(s), frame(f), maxbytes(mb), maxatoms(ma) {}
 
-	bool check_bounds(size_t needed) {
-		if (offset + needed > frame.size()) {
+	void reject_size(const std::string &name) {
+		errors.push_back({ParseDiag::VarLengthOverflow, "invalid or excessive length for field '" + name + "'"});
+		failed = true;
+	}
+
+	bool check_bounds(uint64_t needed) {
+		if (!parse_bounds::contains(frame.size(), offset, needed)) {
 			ParseDiag diag;
 			diag.code = ParseDiag::OutOfBounds;
-			diag.message = "out of bounds at offset " + std::to_string(offset) + " need " + std::to_string(needed) + " have " + std::to_string(frame.size() - offset);
+			diag.message = "out of bounds at offset " + std::to_string(offset) + " need " + std::to_string(needed) + " frame size " + std::to_string(frame.size());
 			errors.push_back(diag);
 			failed = true;
 			return false;
@@ -119,7 +125,11 @@ struct ParseContext {
 
 	void read_fixed_array(PrimitiveType pt, const std::string &name, int64_t count) {
 		size_t elem_sz = primitive_size(pt);
-		size_t total = (size_t)count * elem_sz;
+		size_t total;
+		if (!parse_bounds::multiply(elem_sz, count, total)) {
+			reject_size(name);
+			return;
+		}
 		if (!check_bounds(total)) return;
 
 		FieldValue fv;
@@ -186,7 +196,7 @@ struct ParseContext {
 	}
 
 	void read_fixed_bytes(const std::string &name, int64_t count) {
-		if ((uint64_t)count > maxbytes) {
+		if (count < 0 || (uint64_t)count > maxbytes) {
 			ParseDiag diag;
 			diag.code = ParseDiag::OutOfBounds;
 			diag.message = "bytes length " + std::to_string(count) + " exceeds maxbytes " + std::to_string(maxbytes);
@@ -194,10 +204,10 @@ struct ParseContext {
 			failed = true;
 			return;
 		}
-		if (!check_bounds((size_t)count)) return;
+		if (!check_bounds(count)) return;
 		FieldValue fv;
 		fv.kind = FieldValue::Bytes_;
-		fv.bytes_value.assign(frame.data() + offset, frame.data() + offset + count);
+		if (count) fv.bytes_value.assign(frame.data() + offset, frame.data() + offset + count);
 		offset += count;
 		fields[name] = std::move(fv);
 	}
@@ -225,10 +235,15 @@ struct ParseContext {
 	}
 
 	void read_remaining_bytes(const std::string &name) {
+		if (!check_bounds(0)) return;
 		size_t remaining = frame.size() - offset;
+		if (remaining > maxbytes) {
+			reject_size(name);
+			return;
+		}
 		FieldValue fv;
 		fv.kind = FieldValue::Bytes_;
-		fv.bytes_value.assign(frame.data() + offset, frame.data() + offset + remaining);
+		if (remaining) fv.bytes_value.assign(frame.data() + offset, frame.data() + frame.size());
 		offset = frame.size();
 		fields[name] = std::move(fv);
 	}
@@ -276,7 +291,11 @@ struct ParseContext {
 	}
 
 	void read_fixed_string(const std::string &name, int64_t size) {
-		if (!check_bounds((size_t)size)) return;
+		if (size < 0) {
+			reject_size(name);
+			return;
+		}
+		if (!check_bounds(size)) return;
 		size_t content_len = 0;
 		for (int64_t i = 0; i < size; ++i) {
 			if (frame[offset + i] == 0x00) {
@@ -295,7 +314,7 @@ struct ParseContext {
 			if (!found_nul) content_len = (size_t)size;
 		}
 
-		if (schema.encoding == Encoding::UTF8 && !is_valid_utf8(frame.data() + offset, content_len)) {
+		if (content_len && schema.encoding == Encoding::UTF8 && !is_valid_utf8(frame.data() + offset, content_len)) {
 			ParseDiag diag;
 			diag.code = ParseDiag::InvalidUTF8;
 			diag.message = "invalid utf8 in fixed string field '" + name + "'";
@@ -307,7 +326,7 @@ struct ParseContext {
 
 		FieldValue fv;
 		fv.kind = FieldValue::String_;
-		fv.string_value.assign(reinterpret_cast<const char *>(frame.data() + offset), content_len);
+		if (content_len) fv.string_value.assign(reinterpret_cast<const char *>(frame.data() + offset), content_len);
 		offset += size;
 		fields[name] = std::move(fv);
 	}
@@ -335,24 +354,17 @@ struct ParseContext {
 	{
 		int64_t planes = resolve_dim(planes_lit, planes_field);
 		if (failed) return;
-		if (planes <= 0) planes = 1;
 
 		int64_t d1 = resolve_dim(dim1_lit, dim1_field);
 		if (failed) return;
 		int64_t d2 = resolve_dim(dim2_lit, dim2_field);
 		if (failed) return;
 
-		if (d1 <= 0 || d2 <= 0) {
-			ParseDiag diag;
-			diag.code = ParseDiag::OutOfBounds;
-			diag.message = "matrix dims must be > 0 for field '" + name + "'";
-			errors.push_back(diag);
-			failed = true;
+		size_t total;
+		if (!parse_bounds::matrix_bytes(primitive_size(pt), planes, d1, d2, maxbytes, total)) {
+			reject_size(name);
 			return;
 		}
-
-		size_t cell_sz = primitive_size(pt);
-		size_t total = (size_t)(planes * d1 * d2) * cell_sz;
 		if (!check_bounds(total)) return;
 
 		FieldValue fv;
@@ -539,7 +551,9 @@ ParseResult parse_frame(const CompiledSchema &schema, const Frame &frame, uint64
 				instr.matrix_dim2, instr.matrix_dim2_field);
 			break;
 		case Instr::Skip_:
-			if (ctx.check_bounds((size_t)instr.skip_bytes)) {
+			if (instr.skip_bytes < 0) {
+				ctx.reject_size("skip");
+			} else if (ctx.check_bounds(instr.skip_bytes)) {
 				ctx.offset += instr.skip_bytes;
 			}
 			break;

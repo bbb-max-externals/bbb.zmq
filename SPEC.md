@@ -564,7 +564,7 @@ maxstring 4096;
 Meaning:
 
 ```text
-maxbytes  : maximum size of bytes fields
+maxbytes  : maximum byte size per bytes field (including remaining bytes) or packed matrix
 maxitems  : maximum array element count
 maxatoms  : maximum atom count emitted as a Max list
 maxstring : maximum search length for null-terminated strings

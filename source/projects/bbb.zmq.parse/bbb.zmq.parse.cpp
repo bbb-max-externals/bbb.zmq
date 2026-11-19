@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <cstring>
 #include <limits>
+#include <exception>
 
 using namespace c74::min;
 
@@ -162,6 +163,15 @@ public:
 		if (!(args[0] == "packet")) return {};
 
 		auto view_id = static_cast<bbb::ViewId>(static_cast<c74::max::t_atom_long>(args[1]));
+		try {
+			return parse_packet(view_id);
+		} catch (const std::exception &) {
+			error_out.send("error", "parse_exception", static_cast<c74::max::t_atom_long>(view_id));
+		}
+		return {};
+	}};
+
+	atoms parse_packet(bbb::ViewId view_id) {
 		auto view = bbb::Runtime::instance().packet_store.get_view(view_id);
 		if (!view) {
 			error_out.send("error", "packet_not_found", static_cast<c74::max::t_atom_long>(view_id));
@@ -258,7 +268,7 @@ public:
 		}
 
 		return {};
-	}};
+	}
 };
 
 MIN_EXTERNAL(bbb_zmq_parse);
