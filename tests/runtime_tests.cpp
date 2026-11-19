@@ -2,6 +2,7 @@
 #include "bbb/dsl_parser.hpp"
 #include "bbb/packet_store.hpp"
 #include "bbb/parser_vm.hpp"
+#include "bbb/parse_bounds.hpp"
 #include "bbb/runtime.hpp"
 #include "bbb/schema.hpp"
 #include "bbb/schema_registry.hpp"
@@ -10,6 +11,7 @@
 #include <cmath>
 #include <cstring>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -35,6 +37,25 @@ void expect_equal(const value_type &actual, const value_type &expected, const st
 	}
 }
 
+void test_size_arithmetic() {
+	using namespace bbb::parse_bounds;
+	const auto limit = std::numeric_limits<std::size_t>::max();
+	const auto large = std::numeric_limits<std::int64_t>::max();
+	expect(contains(limit, limit, 0), "empty read at end is valid");
+	expect(!contains(limit, limit, 1), "end offset leaves no bytes");
+	expect(!contains(4, 5, 0), "offset beyond end is invalid");
+	std::size_t bytes = 0;
+	expect(!multiply(limit, 2, bytes), "array byte multiplication is checked");
+	expect(!multiply(2, -1, bytes), "negative array count is rejected");
+	expect(!matrix_bytes(8, large, large, 2, bytes), "matrix products are checked");
+	expect(!matrix_bytes(1, 0, 4, 1, bytes), "zero planes rejected");
+	for (const std::size_t cell : {1, 2, 4, 8}) {
+		expect(matrix_bytes(cell, 1, 8, 1, bytes) && bytes == 8 * cell, "packed single row");
+		expect(matrix_bytes(cell, 3, 4, 2, bytes) && bytes == 24 * cell, "packed 2D matrix");
+		expect(!matrix_bytes(cell, 1, 4, large, bytes), "matrix height product exceeds size_t");
+	}
+}
+
 void expect_near(double actual, double expected, double tolerance, const std::string &message) {
 	if(std::fabs(actual - expected) > tolerance) {
 		std::cerr << "FAIL: " << message << " expected=" << expected << " actual=" << actual << '\n';
@@ -57,6 +78,32 @@ bbb::CompiledSchema compile_single_schema(const std::string &source) {
 		return {};
 	}
 	return compile_result.schemas.front();
+}
+
+void test_frame_sized_fields() {
+	for (const int rows : {1, 2}) {
+		const auto schema = compile_single_schema("schema image { matrix u8:2[3][" +
+			std::to_string(rows) + "] pixels; emit image pixels@matrix; }");
+		const bbb::Frame frame(6 * rows, 42);
+		const auto result = bbb::parse_frame(schema, frame, 1, 1);
+		expect(result.ok() && result.outputs.size() == 1, "matrix is bounded by frame, not maxbytes");
+		if (result.outputs.size() == 1 && result.outputs[0].atoms.size() == 1) {
+			const auto *matrix = std::get_if<bbb::MatrixData>(&result.outputs[0].atoms[0]);
+			expect(matrix && matrix->planes == 2 && matrix->dim1 == 3 && matrix->dim2 == rows &&
+				matrix->data == frame, "packed matrix layout and values preserved");
+		} else {
+			expect(false, "matrix output contains exactly one atom");
+		}
+	}
+	const auto image = compile_single_schema("schema video { matrix u8:4[640][480] pixels; emit image pixels@matrix; }");
+	const bbb::Frame rgba(640 * 480 * 4, 42);
+	const auto video = bbb::parse_frame(image, rgba);
+	expect(video.ok() && video.outputs.size() == 1, "default settings accept VGA RGBA");
+	const bbb::Frame payload{1, 2, 3};
+	const auto rest = compile_single_schema("schema rest { bytes[*] data; emit data data@list; }");
+	const auto result = bbb::parse_frame(rest, payload, 1, 3);
+	expect(result.ok() && result.outputs.size() == 1 && result.outputs[0].atoms.size() == 3,
+		"remaining bytes use the actual frame extent despite a smaller maxbytes");
 }
 
 template <typename value_type>
@@ -376,6 +423,8 @@ void test_packet_delivery_lifetime() {
 } // namespace
 
 int main() {
+	test_size_arithmetic();
+	test_frame_sized_fields();
 	test_big_endian_scalar_emit();
 	test_little_endian_arrays_strings_and_directives();
 	test_variable_bytes_and_emit_modifiers();
